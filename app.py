@@ -19,53 +19,38 @@ st.markdown("""
         overflow: hidden;
         margin-bottom: 4px;
     }
-    .metric-accent {
-        height: 4px;
-    }
+    .metric-accent { height: 3px; }
     .accent-blue { background: #378ADD; }
     .accent-teal { background: #1D9E75; }
-    .metric-body {
-        padding: 12px 16px;
-    }
+    .metric-body { padding: 10px 12px; }
     .metric-label {
-        font-size: 11px;
+        font-size: 10px;
         color: #6b7280;
-        margin: 0 0 4px;
+        margin: 0 0 3px;
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
     .metric-value {
-        font-size: 28px;
+        font-size: 22px;
         font-weight: 600;
         color: #111827;
         margin: 0;
         line-height: 1.1;
     }
     .metric-sub {
-        font-size: 11px;
+        font-size: 10px;
         color: #9ca3af;
-        margin: 4px 0 0;
+        margin: 3px 0 0;
     }
     .pace-row {
-        font-size: 11px;
+        font-size: 10px;
         color: #185FA5;
-        margin-top: 8px;
-        padding-top: 8px;
+        margin-top: 6px;
+        padding-top: 6px;
         border-top: 0.5px solid #e5e7eb;
     }
-    .pace-projected {
-        font-weight: 600;
-    }
-    .section-title {
-        font-size: 11px;
-        font-weight: 600;
-        color: #6b7280;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        margin-bottom: 8px;
-        margin-top: 4px;
-    }
-    div[data-testid="stHorizontalBlock"] { gap: 12px; }
+    .pace-projected { font-weight: 600; }
+    div[data-testid="stHorizontalBlock"] { gap: 8px; }
 </style>
 """, unsafe_allow_html=True)
  
@@ -83,9 +68,9 @@ def metric_card(label, value, accent="blue", sub=None, pace_val=None, days_left=
     if pace_val is not None:
         pace_html = (
             f'<div class="pace-row">'
-            f'&#8594; Projected month-end: '
+            f'&#8594; Month-end: '
             f'<span class="pace-projected">{pace_val}</span>'
-            f' ({days_left}d left)'
+            f' ({days_left}d)'
             f'</div>'
         )
     else:
@@ -138,11 +123,10 @@ with tab1:
  
     d = get_data(campaign)
  
-    # ── Google section ────────────────────────────────────────────────────────
-    st.markdown('<div class="section-title">Google</div>', unsafe_allow_html=True)
-    g1, g2 = st.columns(2)
+    # ── 5 cards in one row ────────────────────────────────────────────────────
+    c1, c2, c3, c4, c5 = st.columns(5)
  
-    with g1:
+    with c1:
         metric_card(
             label="Conversions",
             value=f"{d['conversions']:,}",
@@ -151,7 +135,7 @@ with tab1:
             pace_val=f"{projected(d['conversions'], day_of_month, days_in_month):,}",
             days_left=days_left
         )
-    with g2:
+    with c2:
         metric_card(
             label="Cost",
             value=f"${d['cost']:,}",
@@ -159,17 +143,7 @@ with tab1:
             pace_val=f"${projected(d['cost'], day_of_month, days_in_month):,}",
             days_left=days_left
         )
- 
-    st.markdown(
-        "<hr style='border:none; border-top:0.5px solid #e5e7eb; margin: 8px 0 16px;'>",
-        unsafe_allow_html=True
-    )
- 
-    # ── CRM section ───────────────────────────────────────────────────────────
-    st.markdown('<div class="section-title">CRM</div>', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
- 
-    with c1:
+    with c3:
         metric_card(
             label="CRM Leads",
             value=f"{d['leads']:,}",
@@ -178,7 +152,7 @@ with tab1:
             pace_val=f"{projected(d['leads'], day_of_month, days_in_month):,}",
             days_left=days_left
         )
-    with c2:
+    with c4:
         metric_card(
             label="Appointments",
             value=f"{d['appointments']:,}",
@@ -186,9 +160,12 @@ with tab1:
             pace_val=f"{projected(d['appointments'], day_of_month, days_in_month):,}",
             days_left=days_left
         )
-    with c3:
+    with c5:
         metric_card(
             label="Customers",
             value=f"{d['customers']:,}",
             accent="teal"
         )
+ 
+    # ── Space for future content ───────────────────────────────────────────────
+    st.markdown("<br>", unsafe_allow_html=True)
