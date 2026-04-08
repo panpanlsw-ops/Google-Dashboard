@@ -84,6 +84,7 @@ def metric_card(label, value, sub=None, pace=None):
     """, unsafe_allow_html=True)
 
 
+
 # ── Date info ─────────────────────────────────────────────────────────────────
 today = date.today()
 day_of_month = today.day
@@ -121,13 +122,13 @@ with tab1:
             label="Conversions",
             value=f"{d['conversions']:,}",
             sub=f"🔵 Invoca {d['invoca']:,} &nbsp;|&nbsp; 🟢 Form {d['form']:,}",
-            pace=f"→ Projected month-end: <strong>{projected(d['conversions'], day_of_month, days_in_month):,}</strong> &nbsp;({days_left}d left)"
+            pace=f"→ Projected month-end: <strong>{projected(d['conversions'], day_of_month, days_in_month):,}</strong> ({days_left}d left)"
         )
     with g2:
         metric_card(
             label="Cost",
             value=f"${d['cost']:,}",
-            pace=f"→ Projected month-end: <strong>${projected(d['cost'], day_of_month, days_in_month):,}</strong> &nbsp;({days_left}d left)"
+            pace=f"→ Projected month-end: <strong>${projected(d['cost'], day_of_month, days_in_month):,}</strong> ({days_left}d left)"
         )
 
     st.markdown("<hr style='border:none; border-top:0.5px solid #e5e7eb; margin: 8px 0 16px;'>", unsafe_allow_html=True)
@@ -141,13 +142,13 @@ with tab1:
             label="CRM Leads",
             value=f"{d['leads']:,}",
             sub=f"🔵 Invoca {d['crm_invoca']:,} &nbsp;|&nbsp; 🟢 Form {d['crm_form']:,}",
-            pace=f"→ Projected month-end: <strong>{projected(d['leads'], day_of_month, days_in_month):,}</strong> &nbsp;({days_left}d left)"
+            pace=f"→ Projected month-end: <strong>{projected(d['leads'], day_of_month, days_in_month):,}</strong> ({days_left}d left)"
         )
     with c2:
         metric_card(
             label="Appointments",
             value=f"{d['appointments']:,}",
-            pace=f"→ Projected month-end: <strong>{projected(d['appointments'], day_of_month, days_in_month):,}</strong> &nbsp;({days_left}d left)"
+            pace=f"→ Projected month-end: <strong>{projected(d['appointments'], day_of_month, days_in_month):,}</strong> ({days_left}d left)"
         )
     with c3:
         metric_card(
