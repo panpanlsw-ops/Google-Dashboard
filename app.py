@@ -4,7 +4,7 @@ import calendar
 from data import get_data, CAMPAIGNS
  
 st.set_page_config(
-    page_title="Marketing Dashboard",
+    page_title="Daily Report",
     page_icon="📊",
     layout="wide"
 )
@@ -13,15 +13,24 @@ st.set_page_config(
 st.markdown("""
 <style>
     .metric-card {
-        background: #f8f9fa;
+        background: #ffffff;
+        border: 0.5px solid #e5e7eb;
         border-radius: 10px;
-        padding: 18px 20px;
+        overflow: hidden;
         margin-bottom: 4px;
     }
+    .metric-accent {
+        height: 4px;
+    }
+    .accent-blue { background: #378ADD; }
+    .accent-teal { background: #1D9E75; }
+    .metric-body {
+        padding: 12px 16px;
+    }
     .metric-label {
-        font-size: 12px;
+        font-size: 11px;
         color: #6b7280;
-        margin-bottom: 4px;
+        margin: 0 0 4px;
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
@@ -29,29 +38,30 @@ st.markdown("""
         font-size: 28px;
         font-weight: 600;
         color: #111827;
+        margin: 0;
         line-height: 1.1;
     }
     .metric-sub {
-        font-size: 12px;
-        color: #6b7280;
-        margin-top: 6px;
+        font-size: 11px;
+        color: #9ca3af;
+        margin: 4px 0 0;
     }
     .pace-row {
-        font-size: 12px;
+        font-size: 11px;
         color: #185FA5;
         margin-top: 8px;
         padding-top: 8px;
-        border-top: 1px solid #e5e7eb;
+        border-top: 0.5px solid #e5e7eb;
     }
     .pace-projected {
         font-weight: 600;
     }
     .section-title {
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 600;
         color: #6b7280;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.06em;
         margin-bottom: 8px;
         margin-top: 4px;
     }
@@ -68,14 +78,14 @@ def projected(value: float, day: int, days_in_month: int) -> int:
  
  
 # ── Metric card ───────────────────────────────────────────────────────────────
-def metric_card(label, value, sub=None, pace_val=None, days_left=None):
+def metric_card(label, value, accent="blue", sub=None, pace_val=None, days_left=None):
     sub_html = f'<div class="metric-sub">{sub}</div>' if sub else ""
     if pace_val is not None:
         pace_html = (
             f'<div class="pace-row">'
             f'&#8594; Projected month-end: '
             f'<span class="pace-projected">{pace_val}</span>'
-            f' &nbsp;({days_left}d left)'
+            f' ({days_left}d left)'
             f'</div>'
         )
     else:
@@ -83,10 +93,13 @@ def metric_card(label, value, sub=None, pace_val=None, days_left=None):
  
     st.markdown(
         f'<div class="metric-card">'
+        f'<div class="metric-accent accent-{accent}"></div>'
+        f'<div class="metric-body">'
         f'<div class="metric-label">{label}</div>'
         f'<div class="metric-value">{value}</div>'
         f'{sub_html}'
         f'{pace_html}'
+        f'</div>'
         f'</div>',
         unsafe_allow_html=True
     )
@@ -102,10 +115,11 @@ days_left = days_in_month - day_of_month
 # ── Header ────────────────────────────────────────────────────────────────────
 col_title, col_date = st.columns([3, 1])
 with col_title:
+    st.markdown("# Daily Report")
     st.markdown("## Performance Overview")
 with col_date:
     st.markdown(
-        f"<div style='text-align:right; color:#6b7280; padding-top:8px;'>"
+        f"<div style='text-align:right; color:#6b7280; padding-top:16px;'>"
         f"{today.strftime('%a, %b %d %Y')}</div>",
         unsafe_allow_html=True
     )
@@ -132,7 +146,8 @@ with tab1:
         metric_card(
             label="Conversions",
             value=f"{d['conversions']:,}",
-            sub=f"🔵 Invoca {d['invoca']:,} &nbsp;|&nbsp; 🟢 Form {d['form']:,}",
+            accent="blue",
+            sub=f"Invoca {d['invoca']:,} · Form {d['form']:,}",
             pace_val=f"{projected(d['conversions'], day_of_month, days_in_month):,}",
             days_left=days_left
         )
@@ -140,6 +155,7 @@ with tab1:
         metric_card(
             label="Cost",
             value=f"${d['cost']:,}",
+            accent="blue",
             pace_val=f"${projected(d['cost'], day_of_month, days_in_month):,}",
             days_left=days_left
         )
@@ -157,7 +173,8 @@ with tab1:
         metric_card(
             label="CRM Leads",
             value=f"{d['leads']:,}",
-            sub=f"🔵 Invoca {d['crm_invoca']:,} &nbsp;|&nbsp; 🟢 Form {d['crm_form']:,}",
+            accent="teal",
+            sub=f"Invoca {d['crm_invoca']:,} · Form {d['crm_form']:,}",
             pace_val=f"{projected(d['leads'], day_of_month, days_in_month):,}",
             days_left=days_left
         )
@@ -165,11 +182,13 @@ with tab1:
         metric_card(
             label="Appointments",
             value=f"{d['appointments']:,}",
+            accent="teal",
             pace_val=f"{projected(d['appointments'], day_of_month, days_in_month):,}",
             days_left=days_left
         )
     with c3:
         metric_card(
             label="Customers",
-            value=f"{d['customers']:,}"
+            value=f"{d['customers']:,}",
+            accent="teal"
         )
