@@ -13,6 +13,7 @@ st.set_page_config(
 st.markdown("""
 <style>
     .metric-card {
+        min-height: 120px;
         background: #ffffff;
         border: 0.5px solid #e5e7eb;
         border-radius: 10px;
