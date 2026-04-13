@@ -102,3 +102,146 @@ def get_regional_data(start_date: date, end_date: date) -> list:
     Each dict needs: name, ul, nl, apt, quote, cust, sales, nlc, nl_sales
     """
     return MOCK_REGIONAL
+
+
+# ── Campaign performance mock data ────────────────────────────────────────────
+MOCK_CAMPAIGNS = [
+    dict(name="(TWC) LifeSource Brand",           highlight=False),
+    dict(name="AZ - Tucson Single Form",           highlight=True),
+    dict(name="Arizona Single Form",               highlight=False),
+    dict(name="Bakersfield Single Form",           highlight=True),
+    dict(name="Bay Area Single Form",              highlight=False),
+    dict(name="Central Coast Single Form",         highlight=False),
+    dict(name="Competitors - USA",                 highlight=False),
+    dict(name="Demand Gen - Prospecting",          highlight=False),
+    dict(name="Fresno Single Form",                highlight=False),
+    dict(name="IE - Palm Springs Single Form",     highlight=False),
+    dict(name="Inland Empire Single Form",         highlight=False),
+    dict(name="Las Vegas Single Form",             highlight=False),
+    dict(name="Orange County Single Form",         highlight=True),
+    dict(name="PMAX 1 - LA",                       highlight=True),
+    dict(name="PMAX 2 - NoCal",                    highlight=False),
+    dict(name="Pasadena Single Form",              highlight=False),
+    dict(name="RLSA - All",                        highlight=False),
+    dict(name="Sacramento Single Form",            highlight=True),
+    dict(name="San Antonio Single Form",           highlight=True),
+    dict(name="San Diego Single Form",             highlight=False),
+    dict(name="Ventura County Single Form",        highlight=False),
+]
+
+# Monthly data per campaign [Jan..Dec] for 2024, 2025, 2026
+MOCK_CAMP_MONTHLY = {
+    "(TWC) LifeSource Brand": {
+        2024: dict(clicks=[290,310,330,350,370,360,380,400,390,380,360,340], cost=[430,460,490,520,550,535,565,595,580,565,535,505], conv=[20,22,23,25,26,26,27,29,28,27,26,24], leads=[10,11,12,13,13,13,14,15,14,13,13,12], apt=[4,5,5,5,6,6,6,6,6,6,5,5], cust=[1,1,1,2,2,2,2,2,2,2,1,1], sales=[8000,9000,9500,11000,11500,11000,12000,13000,12500,12000,10000,9000], roi=[1200,1350,1400,1600,1650,1600,1750,1900,1800,1750,1500,1350]),
+        2025: dict(clicks=[320,340,365,385,405,395,415,440,428,415,395,370], cost=[475,505,540,572,600,588,617,650,634,617,588,555], conv=[22,24,26,27,28,28,30,32,31,30,28,26], leads=[11,12,13,14,14,14,15,16,16,15,14,13], apt=[5,5,6,6,6,6,6,7,7,6,6,5], cust=[1,2,2,2,2,2,2,2,2,2,2,1], sales=[9000,10500,11000,12500,13000,12500,14000,15000,14500,14000,12000,10500], roi=[1520,1700,1780,1900,1950,1900,2000,2100,2050,2000,1800,1700]),
+        2026: dict(clicks=[355,378,410,1431,0,0,0,0,0,0,0,0], cost=[525,558,600,2209,0,0,0,0,0,0,0,0], conv=[24,27,29,110,0,0,0,0,0,0,0,0], leads=[12,14,15,58,0,0,0,0,0,0,0,0], apt=[5,6,6,25,0,0,0,0,0,0,0,0], cust=[2,2,2,6,0,0,0,0,0,0,0,0], sales=[10000,11500,12500,47427,0,0,0,0,0,0,0,0], roi=[1700,1850,1950,2046,0,0,0,0,0,0,0,0]),
+    },
+    "PMAX 1 - LA": {
+        2024: dict(clicks=[420,452,493,524,545,534,561,596,575,554,522,480], cost=[3200,3445,3758,3995,4152,4068,4274,4543,4381,4223,3980,3660], conv=[10,11,12,13,13,13,14,15,14,13,13,12], leads=[5,6,6,7,7,7,7,7,7,7,6,5], apt=[3,3,3,4,4,4,4,4,4,4,3,3], cust=[1,1,1,1,1,1,1,2,1,1,1,1], sales=[12000,13500,14000,15500,16000,15500,16500,18000,17500,16500,15000,13000], roi=[52,60,65,72,74,72,78,88,85,78,70,62]),
+        2025: dict(clicks=[466,502,547,582,605,593,623,662,639,616,580,533], cost=[3552,3824,4172,4435,4609,4515,4744,5043,4863,4688,4418,4062], conv=[11,12,13,14,14,14,15,16,15,14,14,13], leads=[6,6,7,7,8,8,8,8,8,8,7,6], apt=[3,3,4,4,4,4,4,5,4,4,4,3], cust=[1,1,1,1,2,1,2,2,2,1,1,1], sales=[13500,15000,15500,17000,18000,17000,18500,20000,19500,18000,16500,14500], roi=[58,67,72,80,82,80,86,97,94,86,78,69]),
+        2026: dict(clicks=[518,558,608,1673,0,0,0,0,0,0,0,0], cost=[3944,4248,4631,12122,0,0,0,0,0,0,0,0], conv=[12,13,14,34,0,0,0,0,0,0,0,0], leads=[7,7,8,23,0,0,0,0,0,0,0,0], apt=[3,4,4,9,0,0,0,0,0,0,0,0], cust=[1,1,2,3,0,0,0,0,0,0,0,0], sales=[15000,16500,17500,22277,0,0,0,0,0,0,0,0], roi=[64,74,80,84,0,0,0,0,0,0,0,0]),
+    },
+}
+
+def _default_monthly():
+    return dict(clicks=[0]*12, cost=[0]*12, conv=[0]*12, leads=[0]*12,
+                apt=[0]*12, cust=[0]*12, sales=[0]*12, roi=[0]*12)
+
+def get_campaign_data() -> list:
+    """
+    Returns list of campaigns.
+    TO CONNECT REAL DATA: replace with your DB query.
+    Each dict needs: name, highlight (bool)
+    """
+    return MOCK_CAMPAIGNS
+
+
+def get_campaign_trend(campaign: str, from_month: int, from_year: int,
+                        to_month: int, to_year: int) -> dict:
+    """
+    Returns aggregated totals + monthly arrays for the selected range.
+    TO CONNECT REAL DATA: replace with your DB query.
+    Returns dict with: clicks, cost, conv, leads, apt, cust, sales, roi,
+                       and *_monthly / *_monthly_ly lists for the trend chart.
+    """
+    def get_months(fm, fy, tm, ty):
+        r = []
+        m, y = fm, fy
+        while y < ty or (y == ty and m <= tm):
+            r.append((m, y))
+            m += 1
+            if m > 11: m = 0; y += 1
+        return r
+
+    months    = get_months(from_month, from_year, to_month, to_year)
+    ly_months = [(m, y-1) for m, y in months]
+
+    d    = MOCK_CAMP_MONTHLY.get(campaign, {})
+    def val(m, y, field): return (d.get(y) or _default_monthly()).get(field, [0]*12)[m]
+
+    result = dict(clicks=0, cost=0, conv=0, leads=0, apt=0, cust=0, sales=0, roi=0)
+    for field in result:
+        result[field] = sum(val(m, y, field) for m, y in months)
+
+    for field in ["clicks","cost","conv","leads","apt","sales","roi"]:
+        result[f"{field}_monthly"]    = [val(m, y, field) for m, y in months]
+        result[f"{field}_monthly_ly"] = [val(m, y, field) for m, y in ly_months]
+
+    cpc = result["cost"] / result["conv"] if result["conv"] else 0
+    result["cpc"] = round(cpc)
+    return result
+
+
+# ── Campaign performance mock data ────────────────────────────────────────────
+def _mk_trend(base_clicks, base_cost, base_conv, base_leads, base_apt, base_cust, base_sales, base_roi):
+    import random
+    trend = {}
+    for yr in [2024, 2025, 2026]:
+        f = 0.85 if yr == 2024 else (1.0 if yr == 2025 else 1.12)
+        months_count = 4 if yr == 2026 else 12
+        trend[yr] = {
+            "clicks": [max(0, int(base_clicks * f * (0.8 + 0.4*(m/11)))) if m < months_count else 0 for m in range(12)],
+            "cost":   [max(0, int(base_cost   * f * (0.8 + 0.4*(m/11)))) if m < months_count else 0 for m in range(12)],
+            "conv":   [max(0, int(base_conv   * f * (0.8 + 0.4*(m/11)))) if m < months_count else 0 for m in range(12)],
+            "leads":  [max(0, int(base_leads  * f * (0.8 + 0.4*(m/11)))) if m < months_count else 0 for m in range(12)],
+            "apt":    [max(0, int(base_apt    * f * (0.8 + 0.4*(m/11)))) if m < months_count else 0 for m in range(12)],
+            "cust":   [max(0, int(base_cust   * f * (0.8 + 0.4*(m/11)))) if m < months_count else 0 for m in range(12)],
+            "sales":  [max(0, int(base_sales  * f * (0.8 + 0.4*(m/11)))) if m < months_count else 0 for m in range(12)],
+            "roi":    [round(base_roi * f * (0.9 + 0.2*(m/11)), 1) if m < months_count else 0 for m in range(12)],
+        }
+    return trend
+
+MOCK_CAMPAIGNS = [
+    dict(name="(TWC) LifeSource Brand",         trend=_mk_trend(1431,2209,110,58,25,6,47427,2046)),
+    dict(name="AZ - Tucson Single Form",         trend=_mk_trend(224,3164,15,8,3,0,0,-100)),
+    dict(name="Arizona Single Form",             trend=_mk_trend(1430,16157,52,22,5,0,0,-100)),
+    dict(name="Bay Area Single Form",            trend=_mk_trend(794,9648,33,25,5,1,7072,-27)),
+    dict(name="Central Coast Single Form",       trend=_mk_trend(137,2668,8,1,1,0,0,-100)),
+    dict(name="Competitors - USA",               trend=_mk_trend(964,9205,28,25,9,0,0,-100)),
+    dict(name="Demand Gen - Prospecting",        trend=_mk_trend(24650,15524,56,6,2,1,150,-99)),
+    dict(name="Fresno Single Form",              trend=_mk_trend(193,2392,5,4,0,0,0,-100)),
+    dict(name="IE - Palm Springs Single Form",   trend=_mk_trend(100,1723,6,1,1,0,0,-100)),
+    dict(name="Inland Empire Single Form",       trend=_mk_trend(441,4998,24,14,2,0,0,-100)),
+    dict(name="Las Vegas Single Form",           trend=_mk_trend(414,5436,25,11,2,1,6453,19)),
+    dict(name="Orange County Single Form",       trend=_mk_trend(910,11060,37,11,9,0,0,-100)),
+    dict(name="PMAX 1 - LA",                    trend=_mk_trend(1673,12121,34,23,9,3,22277,84)),
+    dict(name="PMAX 2 - NoCal",                 trend=_mk_trend(3049,13006,65,36,10,1,6572,-49)),
+    dict(name="Pasadena Single Form",            trend=_mk_trend(1152,13657,65,25,5,2,8133,-40)),
+    dict(name="RLSA - All",                      trend=_mk_trend(273,3055,14,6,2,1,7794,155)),
+    dict(name="Sacramento Single Form",          trend=_mk_trend(598,8104,32,12,6,0,0,-100)),
+    dict(name="San Antonio Single Form",         trend=_mk_trend(521,6678,34,15,6,0,0,-100)),
+    dict(name="San Diego Single Form",           trend=_mk_trend(722,9407,35,15,3,0,0,-100)),
+    dict(name="Ventura County Single Form",      trend=_mk_trend(264,4112,19,7,3,2,16532,302)),
+]
+
+
+def get_campaign_data() -> list:
+    """
+    Returns list of campaign dicts with monthly trend data.
+    TO CONNECT REAL DATA: replace return with your DB query.
+    Each dict needs: name, trend (dict of year -> dict of field -> list of 12 monthly values)
+    Fields: clicks, cost, conv, leads, apt, cust, sales, roi
+    """
+    # ── Replace with real DB query ─────────────────────────────────────────
+    return MOCK_CAMPAIGNS
+    # ──────────────────────────────────────────────────────────────────────
