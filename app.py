@@ -391,13 +391,13 @@ with tab3:
           </div>
         </div>
         <div class="m-tabs" id="t3-mtabs">
-          <button class="m-tab active" onclick="t3Metric('clicks',this)">Clicks</button>
-          <button class="m-tab" onclick="t3Metric('cost',this)">Cost</button>
-          <button class="m-tab" onclick="t3Metric('conv',this)">Conversions</button>
-          <button class="m-tab" onclick="t3Metric('leads',this)">Leads</button>
-          <button class="m-tab" onclick="t3Metric('apt',this)">Appointments</button>
-          <button class="m-tab" onclick="t3Metric('sales',this)">Sales</button>
-          <button class="m-tab" onclick="t3Metric('roi',this)">ROI %</button>
+          <button class="m-tab active" onclick="t3SetMetric('clicks',this)">Clicks</button>
+          <button class="m-tab" onclick="t3SetMetric('cost',this)">Cost</button>
+          <button class="m-tab" onclick="t3SetMetric('conv',this)">Conversions</button>
+          <button class="m-tab" onclick="t3SetMetric('leads',this)">Leads</button>
+          <button class="m-tab" onclick="t3SetMetric('apt',this)">Appointments</button>
+          <button class="m-tab" onclick="t3SetMetric('sales',this)">Sales</button>
+          <button class="m-tab" onclick="t3SetMetric('roi',this)">ROI %</button>
         </div>
         <div style="position:relative;height:240px;"><canvas id="t3-chart"></canvas></div>
       </div>
@@ -409,7 +409,7 @@ with tab3:
     const T3_DATA   = {[dict(name=c["name"], trend=c["trend"]) for c in camp_data]};
 
     let t3FM=0,t3FY=2026,t3TM=3,t3TY=2026;
-    let t3Camp=0, t3Metric='clicks', t3Chart=null;
+    let t3Camp=0, t3Met='clicks', t3Chart=null;
 
     function t3GetMonths(fm,fy,tm,ty){{
       const r=[];let m=fm,y=fy;
@@ -470,20 +470,20 @@ with tab3:
       t3UpdateChart();
     }}
 
-    function t3Metric(m,btn){{
-      t3Metric=m;
+    function t3SetMetric(m,btn){{
+      t3Met=m;
       document.querySelectorAll('.m-tab').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       t3UpdateChart();
     }}
 
     function t3UpdateChart(){{
-      const isRoi=t3Metric==='roi';
+      const isRoi=t3Met==='roi';
       const months=t3GetMonths(t3FM,t3FY,t3TM,t3TY);
       const lyMonths=months.map(({m,y})=>({m,y:y-1}));
       const labels=months.map(({m,y})=>T3_MONTHS[m]+' '+y);
-      const tyData=months.map(({m,y})=>T3_DATA[t3Camp]?.trend?.[y]?.[t3Metric]?.[m]||0);
-      const lyData=lyMonths.map(({m,y})=>T3_DATA[t3Camp]?.trend?.[y]?.[t3Metric]?.[m]||0);
+      const tyData=months.map(({m,y})=>T3_DATA[t3Camp]?.trend?.[y]?.[t3Met]?.[m]||0);
+      const lyData=lyMonths.map(({m,y})=>T3_DATA[t3Camp]?.trend?.[y]?.[t3Met]?.[m]||0);
       const tyYr=[...new Set(months.map(x=>x.y))].join('–');
       const lyYr=[...new Set(lyMonths.map(x=>x.y))].join('–');
       document.getElementById('t3-lty').textContent=tyYr;
