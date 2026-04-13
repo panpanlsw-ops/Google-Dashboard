@@ -1,8 +1,9 @@
 # data.py
 # ─────────────────────────────────────────────────────────────────────────────
 # Data layer — swap mock data with real DB queries when ready.
-# get_data()     → today's KPI cards (used by top section)
-# get_roi_data() → MTD data 1st of month → yesterday (used by ROI charts)
+# get_data()          → today's KPI cards
+# get_roi_data()      → MTD ROI charts (1st of month → yesterday)
+# get_regional_data() → MTD regional office table + pie charts
 # ─────────────────────────────────────────────────────────────────────────────
 from datetime import date
 
@@ -14,7 +15,7 @@ CAMPAIGNS = {
     "local":   "Local services ads",
 }
 
-# ── Mock data: today's KPI numbers ────────────────────────────────────────────
+# ── Mock: today's KPI numbers ─────────────────────────────────────────────────
 MOCK_TODAY = {
     "all":     dict(conversions=184, invoca=112, form=72,  cost=4820, leads=201, crm_invoca=118, crm_form=83, appointments=47, customers=19),
     "brand":   dict(conversions=42,  invoca=28,  form=14,  cost=980,  leads=46,  crm_invoca=30,  crm_form=16, appointments=11, customers=4),
@@ -23,9 +24,7 @@ MOCK_TODAY = {
     "local":   dict(conversions=28,  invoca=18,  form=10,  cost=740,  leads=31,  crm_invoca=16,  crm_form=15, appointments=6,  customers=3),
 }
 
-# ── Mock data: ROI section (MTD, this year vs last year) ─────────────────────
-# ty = this year, ly = last year
-# ty_trend / ly_trend = monthly list Jan→current month
+# ── Mock: ROI charts (MTD, this year vs last year) ────────────────────────────
 MOCK_ROI = {
     "all": {
         "ty":  dict(conversions=184, cost=4820, leads=201, appointments=47, customers=19, cost_per_lead=24, cost_per_appointment=103, roi=688),
@@ -59,31 +58,47 @@ MOCK_ROI = {
     },
 }
 
+# ── Mock: regional office data ────────────────────────────────────────────────
+MOCK_REGIONAL = [
+    dict(name="Arizona",           ul=32, nl=30, apt=12, quote=6,  cust=3,  sales=23304.00, nlc=3,  nl_sales=23304.00),
+    dict(name="Austin",            ul=2,  nl=2,  apt=0,  quote=0,  cust=0,  sales=0,        nlc=0,  nl_sales=0),
+    dict(name="Bay Area",          ul=49, nl=46, apt=18, quote=6,  cust=3,  sales=13794.00, nlc=2,  nl_sales=13644.00),
+    dict(name="CDR",               ul=7,  nl=1,  apt=0,  quote=6,  cust=0,  sales=0,        nlc=0,  nl_sales=0),
+    dict(name="Central Coast",     ul=5,  nl=5,  apt=3,  quote=0,  cust=0,  sales=0,        nlc=0,  nl_sales=0),
+    dict(name="Corporate",         ul=1,  nl=0,  apt=0,  quote=0,  cust=0,  sales=0,        nlc=0,  nl_sales=0),
+    dict(name="Fresno",            ul=6,  nl=6,  apt=1,  quote=1,  cust=0,  sales=0,        nlc=0,  nl_sales=0),
+    dict(name="Inland Empire",     ul=36, nl=32, apt=15, quote=7,  cust=2,  sales=12797.16, nlc=2,  nl_sales=12797.16),
+    dict(name="Las Vegas",         ul=19, nl=15, apt=3,  quote=1,  cust=1,  sales=7953.68,  nlc=1,  nl_sales=7953.68),
+    dict(name="National Sales",    ul=37, nl=36, apt=0,  quote=13, cust=2,  sales=7684.00,  nlc=2,  nl_sales=7684.00),
+    dict(name="Orange County",     ul=26, nl=21, apt=17, quote=2,  cust=2,  sales=16352.00, nlc=1,  nl_sales=7794.00),
+    dict(name="Pasadena",          ul=44, nl=36, apt=14, quote=10, cust=3,  sales=23993.00, nlc=3,  nl_sales=23993.00),
+    dict(name="Sacramento",        ul=19, nl=18, apt=8,  quote=2,  cust=0,  sales=0,        nlc=0,  nl_sales=0),
+    dict(name="San Antonio",       ul=12, nl=12, apt=7,  quote=2,  cust=1,  sales=8641.00,  nlc=1,  nl_sales=8641.00),
+    dict(name="San Diego",         ul=22, nl=21, apt=6,  quote=4,  cust=0,  sales=0,        nlc=0,  nl_sales=0),
+    dict(name="Ventura/SB County", ul=9,  nl=8,  apt=5,  quote=2,  cust=2,  sales=16532.00, nlc=2,  nl_sales=16532.00),
+]
+
 
 def get_data(campaign: str) -> dict:
     """
-    Returns today's KPI numbers for the given campaign.
-    TO CONNECT REAL DATA: replace the return below with your DB query.
-    Return a dict with keys: conversions, invoca, form, cost,
-                             leads, crm_invoca, crm_form, appointments, customers
+    Returns today's KPI numbers.
+    TO CONNECT REAL DATA: replace return with your DB query.
     """
-    # ── Replace with real DB query ─────────────────────────────────────────
     return MOCK_TODAY.get(campaign, MOCK_TODAY["all"])
-    # ──────────────────────────────────────────────────────────────────────
 
 
 def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
     """
-    Returns MTD ROI data (1st of month → yesterday) for the ROI charts.
-    TO CONNECT REAL DATA: replace the return below with your DB query.
-    Return a dict with:
-      ty        → this year totals dict
-      ly        → last year totals dict
-      ty_trend  → this year monthly list (Jan → current month)
-      ly_trend  → last year monthly list (Jan → current month)
-    Each dict needs keys: conversions, cost, leads, appointments,
-                          customers, cost_per_lead, cost_per_appointment, roi
+    Returns MTD ROI data for charts.
+    TO CONNECT REAL DATA: replace return with your DB query.
     """
-    # ── Replace with real DB query ─────────────────────────────────────────
     return MOCK_ROI.get(campaign, MOCK_ROI["all"])
-    # ──────────────────────────────────────────────────────────────────────
+
+
+def get_regional_data(start_date: date, end_date: date) -> list:
+    """
+    Returns list of regional office dicts.
+    TO CONNECT REAL DATA: replace return with your DB query.
+    Each dict needs: name, ul, nl, apt, quote, cust, sales, nlc, nl_sales
+    """
+    return MOCK_REGIONAL
