@@ -79,12 +79,169 @@ MOCK_REGIONAL = [
 ]
 
 
+def get_db_connection():
+    """Returns a MySQL connection to the LifeSource database."""
+    import mysql.connector
+    return mysql.connector.connect(
+        host='database-1.ctmneogoq28m.us-east-2.rds.amazonaws.com',
+        database='lifesource',
+        user='reporting_user',
+        password='WaterTree@1'
+    )
+
 def get_data(campaign: str) -> dict:
     """
-    Returns today's KPI numbers.
-    TO CONNECT REAL DATA: replace return with your DB query.
+    Returns today's KPI numbers for Tab 1 cards.
+    Pulls CRM leads, appointments, customers from MySQL.
+    campaign filter maps to google_campaign_map locations.
     """
-    return MOCK_TODAY.get(campaign, MOCK_TODAY["all"])
+    import mysql.connector
+    import pandas as pd
+    from datetime import date, timedelta
+
+    today = date.today()
+    start_date = today.strftime('%Y-%m-%d')
+    end_date = today.strftime('%Y-%m-%d')
+    current_date = (today + timedelta(days=1)).strftime('%Y-%m-%d')
+
+    try:
+        connection = get_db_connection()
+
+        def run(query):
+            return pd.read_sql(query, con=connection)
+
+        # ── Step 1: Get all marketing source leads ────────────────────────
+        df_ms = run(f"""
+            SELECT m.leads_id, m.marketing_events_id, m.accurate,
+                   m.build_source, m.Campaign_ID
+            FROM CRM_marketing_source m
+            LEFT JOIN CRM_leads cl ON m.leads_id = cl.leads_id
+            LEFT JOIN CRM_leads_info cml ON m.leads_id = cml.leads_id
+            WHERE m.created_date BETWEEN '{start_date}' AND '{end_date}'
+              AND cl.salesreps_id != '1261'
+              AND (
+                    m.accurate = 1
+                    OR NOT EXISTS (
+                        SELECT 1 FROM CRM_marketing_source m2
+                        WHERE m2.leads_id = m.leads_id
+                          AND m2.created_date = m.created_date
+                          AND m2.accurate = 1
+                    )
+                )
+        """)
+        df_ms['Rank'] = df_ms.groupby('leads_id')['leads_id'].transform('cumcount') + 1
+
+        # ── Step 2: Filter Google leads (Campaign_ID = 1127) ─────────────
+        google_leads = df_ms[df_ms['Campaign_ID'] == 1127].drop_duplicates('leads_id')
+
+        # ── Step 3: Map campaign names ────────────────────────────────────
+        df_events = run("SELECT marketing_events_id, event_name FROM LSW_marketing_events")
+        event_map = df_events.set_index('marketing_events_id')['event_name']
+        google_leads = google_leads.copy()
+        google_leads['event_name'] = google_leads['marketing_events_id'].map(event_map)
+
+        google_campaign_map = {
+            'PMAX 1 - LA':'PMAX 1 - LA','PMAX 3 - Emerging Markts':'PMAX 3 - Emerging Markts',
+            'LA':'Pasadena Single Form','IE':'Inland Empire Single Form',
+            'OC_':'Orange County Single Form','VC':'Ventura County Single Form',
+            'Ventura+County':'Ventura County Single Form','SD':'San Diego Single Form',
+            'SJ':'Bay Area Single Form','SAC':'Sacramento Single Form',
+            'Fresno':'Fresno Single Form','CC':'Central Coast Single Form',
+            'AZ_Tucson':'AZ - Tucson Single Form','AZ_':'Arizona Single Form',
+            'LV':'Las Vegas Single Form','San_Antonio':'BAC San Antonio',
+            'Austin':'Austin Single Form','brand':'(TWC) LifeSource Brand',
+            'Brand':'(TWC) LifeSource Brand','Competitors':'Competitors – USA',
+            'palm_springs':'IE - Palm Springs Single Form',
+        }
+
+        def map_campaign(event):
+            if isinstance(event, str):
+                for key, value in google_campaign_map.items():
+                    if key in event:
+                        return value
+            return event
+
+        google_leads['location'] = google_leads['event_name'].apply(map_campaign)
+
+        # ── Step 4: Filter by campaign if not "all" ───────────────────────
+        campaign_name_map = {
+            'brand':   '(TWC) LifeSource Brand',
+            'search':  None,  # all non-pmax
+            'display': None,
+            'local':   None,
+        }
+        if campaign != 'all' and campaign in campaign_name_map and campaign_name_map[campaign]:
+            google_leads = google_leads[google_leads['location'] == campaign_name_map[campaign]]
+
+        # ── Step 5: Get appointments ──────────────────────────────────────
+        df_branch = run("""
+            SELECT ss.salesreps_id, b.branch_name
+            FROM LSW_salesreps ss, CRM_branch b
+            WHERE ss.branch_id = b.branch_id AND b.branch_number != ''
+        """)
+        df_branch = df_branch[~df_branch['branch_name'].isin(['National Sales Team','Customer Development','CSR Staff'])]
+        salesrep_ids_str = ','.join(map(str, df_branch['salesreps_id'].tolist()))
+
+        df_apt_raw = run(f"""
+            SELECT id, Milestone_ID, leads_id, salesreps_id, action, date_created
+            FROM CRM_milestones_log
+            WHERE DATE(date_created) BETWEEN '{start_date}' AND '{end_date}'
+              AND Milestone_ID = 214
+              AND action != 'reset'
+              AND salesreps_id IN({salesrep_ids_str})
+        """)
+
+        set_up    = df_apt_raw[df_apt_raw['action'] == 'created']
+        cancelled = df_apt_raw[df_apt_raw['action'] == 'cancelled']
+        df_apt1   = set_up.merge(cancelled, on=['leads_id'], how='outer')
+
+        if not df_apt1.empty and 'date_created_x' in df_apt1.columns:
+            df_set_apt = df_apt1[
+                ((df_apt1['date_created_x'] > df_apt1['date_created_y']) & (df_apt1['action_y'] == 'cancelled')) |
+                (df_apt1['action_y'] != 'cancelled')
+            ].drop_duplicates('leads_id')
+        else:
+            df_set_apt = set_up.drop_duplicates('leads_id')
+
+        apt_lead_ids = set(df_set_apt['leads_id'].unique())
+
+        # ── Step 6: Get customers (sales) ─────────────────────────────────
+        df_invoice = run(f"""
+            SELECT leads_id FROM CRM_webinvoices
+            WHERE created_date >= '{start_date}'
+              AND created_date <= '{current_date}'
+              AND active = 'Y'
+              AND refund = 'N'
+              AND grand_total > 0
+        """)
+        cust_lead_ids = set(df_invoice['leads_id'].unique())
+
+        # ── Step 7: Calculate metrics ─────────────────────────────────────
+        google_lead_ids = set(google_leads['leads_id'].unique())
+
+        invoca_leads = int(google_leads[google_leads['build_source'] != 'Web'].shape[0])
+        form_leads   = int(google_leads[google_leads['build_source'] == 'Web'].shape[0])
+        crm_leads    = int(len(google_lead_ids))
+        appointments = int(len(google_lead_ids & apt_lead_ids))
+        customers    = int(len(google_lead_ids & cust_lead_ids))
+
+        connection.close()
+
+        return dict(
+            conversions=0,
+            invoca=invoca_leads,
+            form=form_leads,
+            cost=0,
+            leads=crm_leads,
+            crm_invoca=invoca_leads,
+            crm_form=form_leads,
+            appointments=appointments,
+            customers=customers,
+        )
+
+    except Exception as e:
+        print(f"DB error in get_data: {e}")
+        return MOCK_TODAY.get(campaign, MOCK_TODAY["all"])
 
 
 def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
