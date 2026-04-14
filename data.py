@@ -100,8 +100,8 @@ def get_data(campaign: str) -> dict:
     from datetime import date, timedelta
 
     today = date.today()
-    start_date = today.strftime('%Y-%m-%d')
-    end_date = today.strftime('%Y-%m-%d')
+    start_date = today.replace(day=1).strftime('%Y-%m-%d')  # 1st of month
+    end_date = today.strftime('%Y-%m-%d')                   # today
     current_date = (today + timedelta(days=1)).strftime('%Y-%m-%d')
 
     try:
@@ -240,8 +240,15 @@ def get_data(campaign: str) -> dict:
         )
 
     except Exception as e:
+        import traceback
         print(f"DB error in get_data: {e}")
-        return MOCK_TODAY.get(campaign, MOCK_TODAY["all"])
+        traceback.print_exc()
+        # Return zeros so dashboard shows but with real error visible in logs
+        return dict(
+            conversions=0, invoca=0, form=0, cost=0,
+            leads=0, crm_invoca=0, crm_form=0,
+            appointments=0, customers=0,
+        )
 
 
 def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
