@@ -86,7 +86,9 @@ def get_db_connection():
         host='database-1.ctmneogoq28m.us-east-2.rds.amazonaws.com',
         database='lifesource',
         user='reporting_user',
-        password='WaterTree@1'
+        password='WaterTree@1',
+        connection_timeout=30,
+        connect_timeout=30,
     )
 
 def get_data(campaign: str) -> dict:

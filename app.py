@@ -74,7 +74,14 @@ tab1, tab2, tab3 = st.tabs(["📈 Today", "🏢 Regional Offices", "📊 Campaig
 # ══════════════════════════════════════════════════════════════════════════════
 with tab1:
     campaign = st.selectbox("Campaign", options=list(CAMPAIGNS.keys()), format_func=lambda x: CAMPAIGNS[x])
-    d = get_data(campaign)
+
+    try:
+        d = get_data(campaign)
+        if all(v == 0 for v in d.values()):
+            st.warning("⚠️ All values are 0 — database may not have data for this date range, or connection failed. Check Manage App → Logs.")
+    except Exception as e:
+        st.error(f"❌ Error loading data: {e}")
+        d = dict(conversions=0, invoca=0, form=0, cost=0, leads=0, crm_invoca=0, crm_form=0, appointments=0, customers=0)
 
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
