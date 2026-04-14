@@ -99,7 +99,7 @@ with tab1:
 
     roi_col1, roi_col2 = st.columns([3, 1])
     with roi_col1:
-        st.markdown("### Current ROI")
+        st.markdown("### MTD & Comparison")
     with roi_col2:
         st.markdown(
             f"<div style='text-align:right;color:#6b7280;padding-top:8px;font-size:12px;'>"
@@ -108,8 +108,8 @@ with tab1:
         )
 
     is_all = (campaign == "all")
-    hint = "Showing all campaigns — select a specific campaign to see monthly trends" if is_all \
-           else f"Monthly trend for {CAMPAIGNS[campaign]} — Jan to {month_name} {year}"
+    hint = "Showing all campaigns MTD — select a specific campaign to see monthly comparison" if is_all \
+           else f"MTD & monthly comparison for {CAMPAIGNS[campaign]}"
     st.caption(hint)
 
     roi = get_roi_data(campaign, roi_start, roi_end)
