@@ -123,9 +123,10 @@ with tab1:
             ly = [get_roi_data(k, roi_start, roi_end)["ly"][field] for k in camp_keys]
             return ty, ly
     else:
-        labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][:today.month]
+        # Daily labels: Apr 1, Apr 2 ... Apr (yesterday)
+        labels = [f"{month_name} {d}" for d in range(1, yesterday.day + 1)]
         def series(field):
-            return roi["ty_trend"][field], roi["ly_trend"][field]
+            return roi["ty_daily"][field], roi["ly_daily"][field]
 
     conv_ty,  conv_ly  = series("conversions")
     cost_ty,  cost_ly  = series("cost")

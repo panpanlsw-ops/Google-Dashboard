@@ -91,8 +91,45 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
     """
     Returns MTD ROI data for charts.
     TO CONNECT REAL DATA: replace return with your DB query.
+    For single campaign view, return daily arrays in ty_daily / ly_daily.
+    Each array has one value per day from the 1st of the month to yesterday.
     """
-    return MOCK_ROI.get(campaign, MOCK_ROI["all"])
+    import random, math
+    data = MOCK_ROI.get(campaign, MOCK_ROI["all"])
+
+    # Generate daily mock data for the current MTD period
+    days = (end_date - start_date).days + 1
+    def daily(total, n):
+        base = total / max(n, 1)
+        vals = [max(0, round(base * (0.7 + 0.6 * math.sin(i/n * math.pi)))) for i in range(n)]
+        # adjust last val to make total match
+        diff = total - sum(vals[:-1])
+        vals[-1] = max(0, diff)
+        return vals
+
+    ty = data["ty"]
+    ly = data["ly"]
+    data["ty_daily"] = {
+        "conversions":        daily(ty["conversions"], days),
+        "cost":               daily(ty["cost"], days),
+        "leads":              daily(ty["leads"], days),
+        "appointments":       daily(ty["appointments"], days),
+        "customers":          daily(ty["customers"], days),
+        "cost_per_lead":      [ty["cost_per_lead"]] * days,
+        "cost_per_appointment": [ty["cost_per_appointment"]] * days,
+        "roi":                [round(ty["roi"] * (0.9 + 0.2*i/days), 1) for i in range(days)],
+    }
+    data["ly_daily"] = {
+        "conversions":        daily(ly["conversions"], days),
+        "cost":               daily(ly["cost"], days),
+        "leads":              daily(ly["leads"], days),
+        "appointments":       daily(ly["appointments"], days),
+        "customers":          daily(ly["customers"], days),
+        "cost_per_lead":      [ly["cost_per_lead"]] * days,
+        "cost_per_appointment": [ly["cost_per_appointment"]] * days,
+        "roi":                [round(ly["roi"] * (0.9 + 0.2*i/days), 1) for i in range(days)],
+    }
+    return data
 
 
 def get_regional_data(start_date: date, end_date: date) -> list:
