@@ -313,200 +313,209 @@ with tab3:
     camp_names = [c["name"] for c in camp_data]
     MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
-    tab3_html = f"""
-    <style>
-    .t3-wrap {{ padding: 0.5rem 0; font-family: sans-serif; }}
-    .t3-header {{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px; }}
-    .t3-title {{ font-size:15px; font-weight:500; color:#111827; }}
-    .t3-controls {{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }}
-    .t3-controls select {{ font-size:12px; padding:5px 10px; border-radius:8px; border:0.5px solid #d1d5db; background:#fff; color:#374151; }}
-    .t3-controls label {{ font-size:12px; color:#6b7280; }}
-    .t3-apply {{ font-size:12px; padding:5px 14px; border-radius:8px; border:0.5px solid #111827; background:#111827; color:#fff; cursor:pointer; }}
-    .t3-badge {{ font-size:12px; color:#6b7280; background:#f9fafb; border:0.5px solid #e5e7eb; border-radius:8px; padding:5px 12px; display:inline-block; margin-bottom:12px; }}
-    .t3-tbl {{ width:100%; border-collapse:collapse; font-size:11px; white-space:nowrap; }}
-    .t3-tbl thead tr {{ background:#111827; }}
-    .t3-tbl th {{ padding:8px 8px; font-size:10px; font-weight:500; color:#9ca3af; text-transform:uppercase; letter-spacing:0.04em; text-align:right; }}
-    .t3-tbl th:first-child {{ text-align:left; color:#fff; }}
-    .t3-tbl td {{ padding:6px 8px; border-bottom:0.5px solid #f3f4f6; text-align:right; color:#374151; cursor:pointer; }}
-    .t3-tbl td:first-child {{ text-align:left; font-weight:500; color:#111827; }}
-    .t3-tbl tfoot td {{ font-weight:600; background:#f8f9fa; border-top:0.5px solid #e5e7eb; color:#111827; padding:7px 8px; }}
-    .t3-tbl tr.data-row:hover td {{ background:#f0f9ff; }}
-    .t3-tbl tr.sel td {{ background:#dbeafe !important; }}
-    .rp {{ background:#d1fae5; color:#065f46; padding:2px 5px; border-radius:4px; font-size:10px; font-weight:500; }}
-    .rn {{ background:#fee2e2; color:#991b1b; padding:2px 5px; border-radius:4px; font-size:10px; font-weight:500; }}
-    .pg {{ background:#d1fae5; color:#065f46; padding:2px 5px; border-radius:4px; font-size:10px; font-weight:500; }}
-    .pr {{ background:#fee2e2; color:#991b1b; padding:2px 5px; border-radius:4px; font-size:10px; font-weight:500; }}
-    .row-hl {{ background:#fefce8; }}
-    .chart-box {{ background:#fff; border:0.5px solid #e5e7eb; border-radius:10px; padding:14px; margin-top:14px; }}
-    .chart-top {{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-wrap:wrap; gap:8px; }}
-    .chart-name {{ font-size:13px; font-weight:500; color:#111827; }}
-    .chart-hint {{ font-size:11px; color:#6b7280; margin-top:2px; }}
-    .leg {{ display:flex; gap:14px; }}
-    .leg-i {{ display:flex; align-items:center; gap:4px; font-size:11px; color:#6b7280; }}
-    .leg-d {{ width:10px; height:10px; border-radius:2px; flex-shrink:0; }}
-    .m-tabs {{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }}
-    .m-tab {{ font-size:11px; padding:4px 10px; border-radius:6px; border:0.5px solid #e5e7eb; background:#fff; color:#6b7280; cursor:pointer; }}
-    .m-tab.active {{ background:#111827; color:#fff; border-color:#111827; }}
-    </style>
+    # Build campaign rows
+    camp_rows = ""
+    for i, c in enumerate(camp_data):
+        hl = " row-hl" if i % 5 == 1 else ""
+        cells = "".join([f'<td id="t3r{i}_{f}">—</td>' for f in ["clicks","cost","conv","cpc","leads","apt","cust","sales","roi","al","oa"]])
+        camp_rows += f'<tr class="data-row{hl}" onclick="t3Select(this,{i})"><td>{c["name"]}</td>{cells}</tr>'
 
-    <div class="t3-wrap">
-      <div class="t3-header">
-        <span class="t3-title">Campaign Performance</span>
-        <div class="t3-controls">
+    # Serialize campaign data safely for JS
+    import json
+    camp_js = []
+    for c in camp_data:
+        camp_js.append({"name": c["name"], "trend": c["trend"]})
+    camp_json = json.dumps(camp_js)
+
+    tab3_html = """
+    <style>
+    .t3 { padding:0.5rem 0; font-family:sans-serif; }
+    .t3h { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
+    .t3h span { font-size:15px; font-weight:500; color:#111827; }
+    .t3c { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .t3c label { font-size:12px; color:#6b7280; }
+    .t3c select { font-size:12px; padding:5px 10px; border-radius:8px; border:0.5px solid #d1d5db; background:#fff; color:#374151; }
+    .t3c button { font-size:12px; padding:5px 14px; border-radius:8px; border:0.5px solid #111827; background:#111827; color:#fff; cursor:pointer; }
+    .t3badge { font-size:12px; color:#6b7280; background:#f9fafb; border:0.5px solid #e5e7eb; border-radius:8px; padding:5px 12px; display:inline-block; margin-bottom:12px; }
+    .t3tbl { width:100%; border-collapse:collapse; font-size:11px; white-space:nowrap; }
+    .t3tbl thead tr { background:#111827; }
+    .t3tbl th { padding:8px 8px; font-size:10px; font-weight:500; color:#9ca3af; text-transform:uppercase; letter-spacing:0.04em; text-align:right; }
+    .t3tbl th:first-child { text-align:left; color:#fff; }
+    .t3tbl td { padding:6px 8px; border-bottom:0.5px solid #f3f4f6; text-align:right; color:#374151; cursor:pointer; }
+    .t3tbl td:first-child { text-align:left; font-weight:500; color:#111827; }
+    .t3tbl tfoot td { font-weight:600; background:#f8f9fa; border-top:0.5px solid #e5e7eb; color:#111827; padding:7px 8px; }
+    .t3tbl tr.data-row:hover td { background:#f0f9ff; }
+    .t3tbl tr.sel td { background:#dbeafe !important; }
+    .t3tbl tr.row-hl { background:#fefce8; }
+    .rp { background:#d1fae5; color:#065f46; padding:2px 5px; border-radius:4px; font-size:10px; font-weight:500; }
+    .rn { background:#fee2e2; color:#991b1b; padding:2px 5px; border-radius:4px; font-size:10px; font-weight:500; }
+    .pg { background:#d1fae5; color:#065f46; padding:2px 5px; border-radius:4px; font-size:10px; font-weight:500; }
+    .pr { background:#fee2e2; color:#991b1b; padding:2px 5px; border-radius:4px; font-size:10px; font-weight:500; }
+    .cbox { background:#fff; border:0.5px solid #e5e7eb; border-radius:10px; padding:14px; margin-top:14px; }
+    .ctop { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-wrap:wrap; gap:8px; }
+    .cname { font-size:13px; font-weight:500; color:#111827; }
+    .chint { font-size:11px; color:#6b7280; margin-top:2px; }
+    .leg { display:flex; gap:14px; }
+    .legi { display:flex; align-items:center; gap:4px; font-size:11px; color:#6b7280; }
+    .legd { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+    .mtabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+    .mtab { font-size:11px; padding:4px 10px; border-radius:6px; border:0.5px solid #e5e7eb; background:#fff; color:#6b7280; cursor:pointer; }
+    .mtab.active { background:#111827; color:#fff; border-color:#111827; }
+    </style>
+    <div class="t3">
+      <div class="t3h">
+        <span>Campaign Performance</span>
+        <div class="t3c">
           <label>From</label>
-          <select id="t3-fm"><option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option></select>
-          <select id="t3-fy"><option>2024</option><option>2025</option><option selected>2026</option></select>
+          <select id="t3fm">
+            <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option>
+            <option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option>
+            <option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option>
+            <option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option>
+          </select>
+          <select id="t3fy"><option>2024</option><option>2025</option><option selected>2026</option></select>
           <label>To</label>
-          <select id="t3-tm"><option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3" selected>Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option></select>
-          <select id="t3-ty"><option>2024</option><option>2025</option><option selected>2026</option></select>
-          <button class="t3-apply" onclick="t3Apply()">Apply</button>
+          <select id="t3tm">
+            <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option>
+            <option value="3" selected>Apr</option><option value="4">May</option><option value="5">Jun</option>
+            <option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option>
+            <option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option>
+          </select>
+          <select id="t3ty"><option>2024</option><option>2025</option><option selected>2026</option></select>
+          <button onclick="t3Apply()">Apply</button>
         </div>
       </div>
-      <div id="t3-badge" class="t3-badge"></div>
+      <div id="t3badge" class="t3badge"></div>
       <div style="overflow-x:auto;margin-bottom:4px;">
-      <table class="t3-tbl">
+      <table class="t3tbl">
         <thead><tr>
           <th>Campaign</th><th>Clicks</th><th>Cost</th><th>Conv.</th><th>Cost/Conv.</th>
           <th>Leads</th><th>Apt</th><th>Customers</th><th>Sales</th><th>ROI</th><th>Apt/Lead</th><th>Order/Apt</th>
         </tr></thead>
-        <tbody id="t3-tbody">
-          {"".join([f'<tr class="data-row{" row-hl" if i%5==1 else ""}" onclick="t3Select(this,{i})"><td>{c["name"]}</td>'+
-            "".join([f'<td id="t3-r{i}-{f}">—</td>' for f in ["clicks","cost","conv","cpc","leads","apt","cust","sales","roi","al","oa"]])+
-            "</tr>" for i,c in enumerate(camp_data)])}
-          <tr style="font-style:italic;"><td colspan="12" style="text-align:center;color:#9ca3af;padding:6px;">Click any row to see monthly trend</td></tr>
+        <tbody id="t3body">""" + camp_rows + """
+          <tr><td colspan="12" style="text-align:center;color:#9ca3af;font-style:italic;padding:6px;">Click any row to see monthly trend</td></tr>
         </tbody>
-        <tfoot id="t3-tfoot"></tfoot>
+        <tfoot id="t3foot"></tfoot>
       </table>
       </div>
-
-      <div class="chart-box">
-        <div class="chart-top">
+      <div class="cbox">
+        <div class="ctop">
           <div>
-            <div class="chart-name" id="t3-cname">{camp_data[0]["name"] if camp_data else "Campaign"} — Monthly Trend</div>
-            <div class="chart-hint" id="t3-chint"></div>
+            <div class="cname" id="t3cname">Select a campaign above</div>
+            <div class="chint" id="t3chint"></div>
           </div>
           <div class="leg">
-            <span class="leg-i"><span class="leg-d" style="background:#378ADD"></span><span id="t3-lty">Selected period</span></span>
-            <span class="leg-i"><span class="leg-d" style="background:#B5D4F4"></span><span id="t3-lly">Same period last year</span></span>
+            <span class="legi"><span class="legd" style="background:#378ADD"></span><span id="t3lty">This period</span></span>
+            <span class="legi"><span class="legd" style="background:#B5D4F4"></span><span id="t3lly">Last period</span></span>
           </div>
         </div>
-        <div class="m-tabs" id="t3-mtabs">
-          <button class="m-tab active" onclick="t3SetMetric('clicks',this)">Clicks</button>
-          <button class="m-tab" onclick="t3SetMetric('cost',this)">Cost</button>
-          <button class="m-tab" onclick="t3SetMetric('conv',this)">Conversions</button>
-          <button class="m-tab" onclick="t3SetMetric('leads',this)">Leads</button>
-          <button class="m-tab" onclick="t3SetMetric('apt',this)">Appointments</button>
-          <button class="m-tab" onclick="t3SetMetric('sales',this)">Sales</button>
-          <button class="m-tab" onclick="t3SetMetric('roi',this)">ROI %</button>
+        <div class="mtabs">
+          <button class="mtab active" onclick="t3SM('clicks',this)">Clicks</button>
+          <button class="mtab" onclick="t3SM('cost',this)">Cost</button>
+          <button class="mtab" onclick="t3SM('conv',this)">Conversions</button>
+          <button class="mtab" onclick="t3SM('leads',this)">Leads</button>
+          <button class="mtab" onclick="t3SM('apt',this)">Appointments</button>
+          <button class="mtab" onclick="t3SM('sales',this)">Sales</button>
+          <button class="mtab" onclick="t3SM('roi',this)">ROI %</button>
         </div>
-        <div style="position:relative;height:240px;"><canvas id="t3-chart"></canvas></div>
+        <div style="position:relative;height:240px;"><canvas id="t3chart"></canvas></div>
       </div>
     </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script>
-    const T3_MONTHS = {MONTH_NAMES};
-    const T3_DATA   = {[dict(name=c["name"], trend=c["trend"]) for c in camp_data]};
+    const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const TD=""" + camp_json + """;
+    var fm=0,fy=2026,tm=3,ty=2026,ci=0,cm='clicks',tc=null;
 
-    let t3FM=0,t3FY=2026,t3TM=3,t3TY=2026;
-    let t3Camp=0, t3Met='clicks', t3Chart=null;
-
-    function t3GetMonths(fm,fy,tm,ty){{
-      const r=[];let m=fm,y=fy;
-      while(y<ty||(y===ty&&m<=tm)){{r.push({{m,y}});m++;if(m>11){{m=0;y++;}}}}
+    function getMonths(a,b,c,d){
+      var r=[],mo=a,yr=b;
+      while(yr<d||(yr===d&&mo<=c)){r.push({m:mo,y:yr});mo++;if(mo>11){mo=0;yr++;}}
       return r;
-    }}
-    function t3Sum(campIdx,months,field){{
-      return months.reduce((s,{{m,y}})=>s+(T3_DATA[campIdx]?.trend?.[y]?.[field]?.[m]||0),0);
-    }}
-    function t3AvgRoi(campIdx,months){{
-      const valid=months.filter(({m,y})=>(T3_DATA[campIdx]?.trend?.[y]?.clicks?.[m]||0)>0);
-      return valid.length?valid.reduce((s,{{m,y}})=>s+(T3_DATA[campIdx]?.trend?.[y]?.roi?.[m]||0),0)/valid.length:0;
-    }}
-    function roiBadge(v){{return v>=0?`<span class="rp">${{v.toFixed(1)}}%</span>`:`<span class="rn">${{v.toFixed(1)}}%</span>`;}}
-    function pctBadge(v,t){{if(!isFinite(v))return'—';return v>=t?`<span class="pg">${{v.toFixed(1)}}%</span>`:`<span class="pr">${{v.toFixed(1)}}%</span>`;}}
-    function money(n){{return n>0?'$'+Math.round(n).toLocaleString():'$0';}}
+    }
+    function gv(i,months,f){
+      return months.reduce(function(s,p){return s+((TD[i]&&TD[i].trend&&TD[i].trend[p.y]&&TD[i].trend[p.y][f]&&TD[i].trend[p.y][f][p.m])||0);},0);
+    }
+    function gav(i,months){
+      var vl=months.filter(function(p){return((TD[i]&&TD[i].trend&&TD[i].trend[p.y]&&TD[i].trend[p.y].clicks&&TD[i].trend[p.y].clicks[p.m])||0)>0;});
+      if(!vl.length)return 0;
+      return vl.reduce(function(s,p){return s+((TD[i]&&TD[i].trend&&TD[i].trend[p.y]&&TD[i].trend[p.y].roi&&TD[i].trend[p.y].roi[p.m])||0);},0)/vl.length;
+    }
+    function rb(v){return v>=0?'<span class="rp">'+v.toFixed(1)+'%</span>':'<span class="rn">'+v.toFixed(1)+'%</span>';}
+    function pb(v,t){if(!isFinite(v))return'—';return v>=t?'<span class="pg">'+v.toFixed(1)+'%</span>':'<span class="pr">'+v.toFixed(1)+'%</span>';}
+    function mn(n){return n>0?'$'+Math.round(n).toLocaleString():'$0';}
+    function se(id,v){var el=document.getElementById(id);if(el)el.innerHTML=v;}
 
-    function t3Apply(){{
-      t3FM=parseInt(document.getElementById('t3-fm').value);
-      t3FY=parseInt(document.getElementById('t3-fy').value);
-      t3TM=parseInt(document.getElementById('t3-tm').value);
-      t3TY=parseInt(document.getElementById('t3-ty').value);
-      const months=t3GetMonths(t3FM,t3FY,t3TM,t3TY);
-      document.getElementById('t3-badge').textContent=
-        T3_MONTHS[t3FM]+' '+t3FY+' → '+T3_MONTHS[t3TM]+' '+t3TY+'  |  vs same period '+(t3FY-1)+'–'+(t3TY-1);
+    function t3Apply(){
+      fm=parseInt(document.getElementById('t3fm').value);
+      fy=parseInt(document.getElementById('t3fy').value);
+      tm=parseInt(document.getElementById('t3tm').value);
+      ty=parseInt(document.getElementById('t3ty').value);
+      var months=getMonths(fm,fy,tm,ty);
+      document.getElementById('t3badge').textContent=MN[fm]+' '+fy+' - '+MN[tm]+' '+ty+'  |  vs '+MN[fm]+' '+(fy-1)+' - '+MN[tm]+' '+(ty-1);
+      TD.forEach(function(c,i){
+        var cl=gv(i,months,'clicks'),co=gv(i,months,'cost'),cv=gv(i,months,'conv'),
+            le=gv(i,months,'leads'),ap=gv(i,months,'apt'),cu=gv(i,months,'cust'),
+            sa=gv(i,months,'sales'),ro=gav(i,months),
+            cpc=cv>0?co/cv:0,al=le>0?ap/le*100:0,oa=ap>0?cu/ap*100:null;
+        se('t3r'+i+'_clicks',cl.toLocaleString()); se('t3r'+i+'_cost',mn(co));
+        se('t3r'+i+'_conv',cv.toLocaleString()); se('t3r'+i+'_cpc',cpc>0?'$'+Math.round(cpc):'—');
+        se('t3r'+i+'_leads',le.toLocaleString()); se('t3r'+i+'_apt',ap.toLocaleString());
+        se('t3r'+i+'_cust',cu.toLocaleString()); se('t3r'+i+'_sales',mn(sa));
+        se('t3r'+i+'_roi',rb(ro)); se('t3r'+i+'_al',pb(al,30));
+        se('t3r'+i+'_oa',oa!==null?pb(oa,20):'#DIV/0!');
+      });
+      var tot={cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};
+      TD.forEach(function(_,i){tot.cl+=gv(i,months,'clicks');tot.co+=gv(i,months,'cost');tot.cv+=gv(i,months,'conv');tot.le+=gv(i,months,'leads');tot.ap+=gv(i,months,'apt');tot.cu+=gv(i,months,'cust');tot.sa+=gv(i,months,'sales');});
+      var ar=TD.reduce(function(s,_,i){return s+gav(i,months);},0)/TD.length;
+      document.getElementById('t3foot').innerHTML='<tr><td>Total</td><td>'+tot.cl.toLocaleString()+'</td><td>'+mn(tot.co)+'</td><td>'+tot.cv+'</td><td>—</td><td>'+tot.le+'</td><td>'+tot.ap+'</td><td>'+tot.cu+'</td><td>'+mn(tot.sa)+'</td><td>'+rb(ar)+'</td><td>'+pb(tot.le>0?tot.ap/tot.le*100:0,30)+'</td><td>'+pb(tot.ap>0?tot.cu/tot.ap*100:0,15)+'</td></tr>';
+      t3UC();
+    }
 
-      T3_DATA.forEach((c,i)=>{{
-        const clicks=t3Sum(i,months,'clicks'),cost=t3Sum(i,months,'cost'),
-              conv=t3Sum(i,months,'conv'),leads=t3Sum(i,months,'leads'),
-              apt=t3Sum(i,months,'apt'),cust=t3Sum(i,months,'cust'),
-              sales=t3Sum(i,months,'sales'),roi=t3AvgRoi(i,months),
-              cpc=conv>0?cost/conv:0,al=leads>0?apt/leads*100:0,oa=apt>0?cust/apt*100:null;
-        const set=(f,v)=>{{const el=document.getElementById(`t3-r${{i}}-${{f}}`);if(el)el.innerHTML=v;}};
-        set('clicks',clicks.toLocaleString()); set('cost',money(cost));
-        set('conv',conv.toLocaleString()); set('cpc',cpc>0?'$'+Math.round(cpc):'—');
-        set('leads',leads.toLocaleString()); set('apt',apt.toLocaleString());
-        set('cust',cust.toLocaleString()); set('sales',money(sales));
-        set('roi',roiBadge(roi)); set('al',pctBadge(al,30));
-        set('oa',oa!==null?pctBadge(oa,20):'#DIV/0!');
-      }});
-
-      const fields=['clicks','cost','conv','leads','apt','cust','sales'];
-      const tots={{}};fields.forEach(f=>{{tots[f]=T3_DATA.reduce((s,_,i)=>s+t3Sum(i,months,f),0);}});
-      const avgRoi=T3_DATA.reduce((s,_,i)=>s+t3AvgRoi(i,months),0)/T3_DATA.length;
-      document.getElementById('t3-tfoot').innerHTML=`
-        <tr><td>Total</td><td>${{tots.clicks.toLocaleString()}}</td><td>${{money(tots.cost)}}</td><td>${{tots.conv}}</td><td>—</td>
-        <td>${{tots.leads}}</td><td>${{tots.apt}}</td><td>${{tots.cust}}</td><td>${{money(tots.sales)}}</td>
-        <td>${{roiBadge(avgRoi)}}</td><td>${{pctBadge(tots.leads>0?tots.apt/tots.leads*100:0,30)}}</td>
-        <td>${{pctBadge(tots.apt>0?tots.cust/tots.apt*100:0,15)}}</td></tr>`;
-      t3UpdateChart();
-    }}
-
-    function t3Select(row,idx){{
-      document.querySelectorAll('#t3-tbody tr.data-row').forEach(r=>r.classList.remove('sel'));
+    function t3Select(row,idx){
+      document.querySelectorAll('#t3body tr.data-row').forEach(function(r){r.classList.remove('sel');});
       row.classList.add('sel');
-      t3Camp=idx;
-      document.getElementById('t3-cname').textContent=T3_DATA[idx].name+' — Monthly Trend';
-      t3UpdateChart();
-    }}
+      ci=idx;
+      document.getElementById('t3cname').textContent=TD[idx].name+' — Monthly Trend';
+      t3UC();
+    }
 
-    function t3SetMetric(m,btn){{
-      t3Met=m;
-      document.querySelectorAll('.m-tab').forEach(b=>b.classList.remove('active'));
+    function t3SM(m,btn){
+      cm=m;
+      document.querySelectorAll('.mtab').forEach(function(b){b.classList.remove('active');});
       btn.classList.add('active');
-      t3UpdateChart();
-    }}
+      t3UC();
+    }
 
-    function t3UpdateChart(){{
-      const isRoi=t3Met==='roi';
-      const months=t3GetMonths(t3FM,t3FY,t3TM,t3TY);
-      const lyMonths=months.map(({m,y})=>({m,y:y-1}));
-      const labels=months.map(({m,y})=>T3_MONTHS[m]+' '+y);
-      const tyData=months.map(({m,y})=>T3_DATA[t3Camp]?.trend?.[y]?.[t3Met]?.[m]||0);
-      const lyData=lyMonths.map(({m,y})=>T3_DATA[t3Camp]?.trend?.[y]?.[t3Met]?.[m]||0);
-      const tyYr=[...new Set(months.map(x=>x.y))].join('–');
-      const lyYr=[...new Set(lyMonths.map(x=>x.y))].join('–');
-      document.getElementById('t3-lty').textContent=tyYr;
-      document.getElementById('t3-lly').textContent=lyYr;
-      document.getElementById('t3-chint').textContent=
-        T3_MONTHS[t3FM]+' '+t3FY+' → '+T3_MONTHS[t3TM]+' '+t3TY+'  |  vs same period last year';
-      if(t3Chart)t3Chart.destroy();
-      t3Chart=new Chart(document.getElementById('t3-chart'),{{
+    function t3UC(){
+      var isR=cm==='roi';
+      var months=getMonths(fm,fy,tm,ty);
+      var ly=months.map(function(p){return{m:p.m,y:p.y-1};});
+      var labels=months.map(function(p){return MN[p.m]+' '+p.y;});
+      var tyd=months.map(function(p){return(TD[ci]&&TD[ci].trend&&TD[ci].trend[p.y]&&TD[ci].trend[p.y][cm]&&TD[ci].trend[p.y][cm][p.m])||0;});
+      var lyd=ly.map(function(p){return(TD[ci]&&TD[ci].trend&&TD[ci].trend[p.y]&&TD[ci].trend[p.y][cm]&&TD[ci].trend[p.y][cm][p.m])||0;});
+      var tyy=[...new Set(months.map(function(p){return p.y;}))].join('–');
+      var lyy=[...new Set(ly.map(function(p){return p.y;}))].join('–');
+      document.getElementById('t3lty').textContent=tyy;
+      document.getElementById('t3lly').textContent=lyy;
+      document.getElementById('t3chint').textContent=MN[fm]+' '+fy+' - '+MN[tm]+' '+ty+'  |  vs same period last year';
+      if(tc)tc.destroy();
+      tc=new Chart(document.getElementById('t3chart'),{
         type:'line',
-        data:{{labels,datasets:[
-          {{data:tyData,borderColor:'#378ADD',backgroundColor:'#378ADD22',fill:true,tension:0.3,pointRadius:4}},
-          {{data:lyData,borderColor:'#B5D4F4',backgroundColor:'#B5D4F422',fill:true,tension:0.3,pointRadius:4,borderDash:[5,4]}},
-        ]}},
-        options:{{responsive:true,maintainAspectRatio:false,
-          plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:ctx=>isRoi?' '+ctx.parsed.y+'%':' '+ctx.parsed.y.toLocaleString()}}}}}},
-          scales:{{
-            x:{{ticks:{{font:{{size:10}},maxRotation:45,autoSkip:true,maxTicksLimit:16}},grid:{{display:false}}}},
-            y:{{ticks:{{font:{{size:10}},callback:isRoi?(v=>v+'%'):(v=>v.toLocaleString())}},grid:{{color:'#f3f4f6'}}}}
-          }}
-        }}
-      }});
-    }}
+        data:{labels:labels,datasets:[
+          {data:tyd,borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.1)',fill:true,tension:0.3,pointRadius:4},
+          {data:lyd,borderColor:'#B5D4F4',backgroundColor:'rgba(181,212,244,0.1)',fill:true,tension:0.3,pointRadius:4,borderDash:[5,4]}
+        ]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return isR?' '+ctx.parsed.y+'%':' '+ctx.parsed.y.toLocaleString();}}}},
+          scales:{
+            x:{ticks:{font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:16},grid:{display:false}},
+            y:{ticks:{font:{size:10},callback:function(v){return isR?v+'%':v.toLocaleString();}},grid:{color:'#f3f4f6'}}
+          }
+        }
+      });
+    }
     t3Apply();
     </script>
     """
+
     st.components.v1.html(tab3_html, height=len(camp_data)*36+720, scrolling=False)
