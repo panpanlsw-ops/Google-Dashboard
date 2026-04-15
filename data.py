@@ -91,13 +91,12 @@ def get_db_connection():
             connect_timeout=30,
         )
         if conn.is_connected():
-            print("✅ Connected to database")
-            return conn
+            st.success("✅ Connected to database")
         else:
-            print("❌ Connection failed")
-            return None
+            st.error("❌ Connection failed")
+        return conn
     except mysql.connector.Error as err:
-        print(f"❌ Error: {err}")
+        st.error(f"❌ Connection error: {err}")
         return None
 
 def get_data(campaign: str) -> dict:
