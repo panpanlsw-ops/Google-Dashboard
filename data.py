@@ -80,16 +80,25 @@ MOCK_REGIONAL = [
 
 
 def get_db_connection():
-    """Returns a MySQL connection to the LifeSource database."""
     import mysql.connector
-    return mysql.connector.connect(
-        host='database-1.ctmneogoq28m.us-east-2.rds.amazonaws.com',
-        database='lifesource',
-        user='reporting_user',
-        password='WaterTree@1',
-        connection_timeout=30,
-        connect_timeout=30,
-    )
+    try:
+        conn = mysql.connector.connect(
+            host='database-1.ctmneogoq28m.us-east-2.rds.amazonaws.com',
+            database='lifesource',
+            user='reporting_user',
+            password='WaterTree@1',
+            connection_timeout=30,
+            connect_timeout=30,
+        )
+        if conn.is_connected():
+            print("✅ Connected to database")
+            return conn
+        else:
+            print("❌ Connection failed")
+            return None
+    except mysql.connector.Error as err:
+        print(f"❌ Error: {err}")
+        return None
 
 def get_data(campaign: str) -> dict:
     """
