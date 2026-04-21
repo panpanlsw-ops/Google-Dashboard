@@ -127,17 +127,29 @@ def get_regional_data(start_date: date, end_date: date) -> list:
     df.columns = ["name","ul","nl","apt","quote","cust","sales","nlc","nl_sales"]
     df = df.dropna(subset=["name"])
     result = []
+    def safe_int(val):
+        try:
+            return int(float(val)) if val is not None and str(val).strip() != "" else 0
+        except:
+            return 0
+
+    def safe_float(val):
+        try:
+            return float(val) if val is not None and str(val).strip() != "" else 0.0
+        except:
+            return 0.0
+
     for _, row in df.iterrows():
         result.append(dict(
             name=str(row["name"]),
-            ul=int(row.get("ul", 0) or 0),
-            nl=int(row.get("nl", 0) or 0),
-            apt=int(row.get("apt", 0) or 0),
-            quote=int(row.get("quote", 0) or 0),
-            cust=int(row.get("cust", 0) or 0),
-            sales=float(row.get("sales", 0) or 0),
-            nlc=int(row.get("nlc", 0) or 0),
-            nl_sales=float(row.get("nl_sales", 0) or 0),
+            ul=safe_int(row.get("ul", 0)),
+            nl=safe_int(row.get("nl", 0)),
+            apt=safe_int(row.get("apt", 0)),
+            quote=safe_int(row.get("quote", 0)),
+            cust=safe_int(row.get("cust", 0)),
+            sales=safe_float(row.get("sales", 0)),
+            nlc=safe_int(row.get("nlc", 0)),
+            nl_sales=safe_float(row.get("nl_sales", 0)),
         ))
     return result
 
@@ -155,19 +167,28 @@ def get_campaign_data() -> list:
     campaigns = df["campaign"].dropna().unique().tolist()
     result = []
 
+    def sv(val):
+        try:
+            v = float(val)
+            return 0.0 if pd.isna(v) else v
+        except:
+            return 0.0
+
     for camp in campaigns:
         rows = df[df["campaign"] == camp]
         trend = {}
         for _, row in rows.iterrows():
-            yr  = int(row["year"])
+            try:
+                yr = int(float(row["year"]))
+            except:
+                continue
             mo  = str(row["month"]).strip()
             idx = MONTH_MAP.get(mo, 0)
             if yr not in trend:
                 trend[yr] = {f: [0]*12 for f in
                              ["clicks","cost","conv","leads","apt","cust","sales","roi"]}
             for f in ["clicks","cost","conv","leads","apt","cust","sales","roi"]:
-                val = row.get(f, 0)
-                trend[yr][f][idx] = float(val) if val else 0
+                trend[yr][f][idx] = sv(row.get(f, 0))
         result.append(dict(name=camp, trend=trend))
 
     return result
