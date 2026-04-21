@@ -23,117 +23,166 @@ def _excel_path():
 
 # ── Tab 1: KPI Cards ──────────────────────────────────────────────────────────
 def get_data(campaign: str) -> dict:
-    """Reads today's KPI numbers from Tab1_KPI sheet."""
+    """
+    Reads KPI numbers from Tab1_KPI sheet.
+    Rows (0-indexed from row 5):
+      4=Conversions, 5=Cost, 6=Invoca, 7=Form, 8=CRM Leads,
+      9=Appointments, 10=Customers, 11=CPL, 12=CPA, 13=ROI
+    Cols: 1=TY, 2=LY MTD, 3=LY Full, 4=Budget
+    """
     df = pd.read_excel(_excel_path(), sheet_name="Tab1_KPI", header=None)
-    # Find rows with data - column B has numeric values
-    # Row 5=Invoca(idx4), 6=Form(idx5), 7=CRM(idx6), 8=Apt(idx7), 9=Cust(idx8)
-    def safe_val(idx):
+
+    def sv(idx, col):
         try:
-            v = df.iloc[idx, 1]
-            return int(float(v)) if v is not None and str(v).strip() not in ["", "nan", "Value"] else 0
+            v = df.iloc[idx, col]
+            if v is None or str(v).strip() in ["", "nan", "None"]: return 0
+            return float(v)
         except:
             return 0
-    invoca = safe_val(4)
-    form   = safe_val(5)
-    leads  = safe_val(6)
-    apt    = safe_val(7)
-    cust   = safe_val(8)
+
     return dict(
-        conversions=0, invoca=invoca, form=form, cost=0,
-        leads=leads, crm_invoca=invoca, crm_form=form,
-        appointments=apt, customers=cust,
+        conversions=int(sv(4,1)),
+        cost=sv(5,1),
+        budget=sv(5,4),
+        invoca=int(sv(6,1)),
+        form=int(sv(7,1)),
+        leads=int(sv(8,1)),
+        crm_invoca=int(sv(6,1)),
+        crm_form=int(sv(7,1)),
+        appointments=int(sv(9,1)),
+        customers=int(sv(10,1)),
+        cost_per_lead=sv(11,1),
+        cost_per_apt=sv(12,1),
+        roi=sv(13,1),
+        ly_mtd=dict(
+            conversions=int(sv(4,2)),
+            cost=sv(5,2),
+            leads=int(sv(8,2)),
+            appointments=int(sv(9,2)),
+            customers=int(sv(10,2)),
+            cost_per_lead=sv(11,2),
+            cost_per_apt=sv(12,2),
+            roi=sv(13,2),
+        ),
+        ly_full=dict(
+            conversions=int(sv(4,3)),
+            cost=sv(5,3),
+            leads=int(sv(8,3)),
+            appointments=int(sv(9,3)),
+            customers=int(sv(10,3)),
+            cost_per_lead=sv(11,3),
+            cost_per_apt=sv(12,3),
+            roi=sv(13,3),
+        ),
     )
 
 
 # ── Tab 1: ROI Charts (MTD & Comparison) ─────────────────────────────────────
 def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
     """
-    Reads campaign monthly trend from Tab3_Campaign sheet.
-    Returns this year vs last year data for MTD charts.
+    Reads MTD comparison data from Tab1_MTD sheet.
+    Columns: Campaign, TY Leads, TY Apt, TY Cust, TY CPL, TY CPA, TY ROI,
+                       LY Leads, LY Apt, LY Cust, LY CPL, LY CPA, LY ROI
     """
-    df = pd.read_excel(_excel_path(), sheet_name="Tab3_Campaign", header=3)
-    df = df.rename(columns={
-        "Campaign": "campaign", "Year": "year", "Month": "month",
-        "Clicks": "clicks", "Cost": "cost", "Conversions": "conv",
-        "Leads": "leads", "Appointments": "apt", "Customers": "cust",
-        "Sales": "sales", "ROI %": "roi",
-    })
+    df = pd.read_excel(_excel_path(), sheet_name="Tab1_MTD", header=4)
+    df.columns = [
+        "campaign",
+        "ty_leads","ty_apt","ty_cust","ty_cpl","ty_cpa","ty_roi",
+        "ly_leads","ly_apt","ly_cust","ly_cpl","ly_cpa","ly_roi",
+    ]
     df = df.dropna(subset=["campaign"])
-    df = df[~df["campaign"].astype(str).str.contains("campaign|row|update", case=False, na=False)]
+    df = df[~df["campaign"].astype(str).str.contains("yellow|blue|legend", case=False, na=False)]
 
-    today = date.today()
-    cur_month = today.strftime("%b")
-    cur_year  = today.year
-    last_year = cur_year - 1
+    def sv(val):
+        try:
+            v = float(val)
+            return 0.0 if (v != v) else v
+        except:
+            return 0.0
 
-    def get_row(camp_filter, yr, mo):
-        rows = df
-        if camp_filter != "all":
-            # map campaign key to partial name match
+    def get_row(camp_key):
+        if camp_key == "all":
+            rows = df[df["campaign"].astype(str).str.lower().str.contains("all campaign", na=False)]
+        else:
             camp_map = {
                 "brand":   "LifeSource Brand",
                 "search":  "Pasadena Single Form",
                 "display": "Orange County",
                 "local":   "Las Vegas",
             }
-            keyword = camp_map.get(camp_filter, "")
-            rows = df[df["campaign"].str.contains(keyword, case=False, na=False)]
-        rows = rows[(rows["year"] == yr) & (rows["month"] == mo)]
+            keyword = camp_map.get(camp_key, "")
+            rows = df[df["campaign"].astype(str).str.contains(keyword, case=False, na=False)]
+
         if rows.empty:
-            return dict(conversions=0, cost=0, leads=0, appointments=0,
-                       customers=0, cost_per_lead=0, cost_per_appointment=0, roi=0)
+            return None
         r = rows.iloc[0]
-        leads = int(r.get("leads", 0))
-        apt   = int(r.get("apt", 0))
-        cost  = float(r.get("cost", 0))
-        return dict(
-            conversions=int(r.get("conv", 0)),
-            cost=int(cost),
-            leads=leads,
-            appointments=apt,
-            customers=int(r.get("cust", 0)),
-            cost_per_lead=round(cost/leads) if leads > 0 else 0,
-            cost_per_appointment=round(cost/apt) if apt > 0 else 0,
-            roi=float(r.get("roi", 0)),
-        )
+        return r
 
-    ty = get_row(campaign, cur_year,  cur_month)
-    ly = get_row(campaign, last_year, cur_month)
+    # Build ty/ly dicts for all campaigns (for bar charts)
+    camp_keys  = list(CAMPAIGNS.keys())
+    camp_names = list(CAMPAIGNS.values())
 
-    # Build monthly trend arrays Jan → current month
-    months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-    months_so_far = months[:today.month]
+    def series_all(field_ty, field_ly):
+        ty_vals, ly_vals = [], []
+        for key in camp_keys:
+            r = get_row(key)
+            if r is not None:
+                ty_vals.append(sv(r.get(field_ty, 0)))
+                ly_vals.append(sv(r.get(field_ly, 0)))
+            else:
+                ty_vals.append(0)
+                ly_vals.append(0)
+        return ty_vals, ly_vals
 
-    def build_trend(yr):
-        result = {f: [] for f in ["conversions","cost","leads","appointments",
-                                   "customers","cost_per_lead","cost_per_appointment","roi"]}
-        for mo in months_so_far:
-            row = get_row(campaign, yr, mo)
-            for f in result:
-                result[f].append(row[f])
-        return result
+    leads_ty,  leads_ly  = series_all("ty_leads", "ly_leads")
+    apt_ty,    apt_ly    = series_all("ty_apt",   "ly_apt")
+    cust_ty,   cust_ly   = series_all("ty_cust",  "ly_cust")
+    cpl_ty,    cpl_ly    = series_all("ty_cpl",   "ly_cpl")
+    cpa_ty,    cpa_ly    = series_all("ty_cpa",   "ly_cpa")
+    roi_ty,    roi_ly    = series_all("ty_roi",   "ly_roi")
 
-    # Build daily arrays for single campaign view (approximate from monthly total)
-    days = (end_date - start_date).days + 1
-    def daily_from_total(total, n):
-        import math
-        if n == 0: return []
-        base = total / n
-        return [max(0, round(base * (0.7 + 0.6 * math.sin(i/max(n,1) * math.pi)))) for i in range(n)]
+    # Single campaign row for ty/ly totals
+    r = get_row(campaign)
+    if r is not None:
+        ty = dict(conversions=0, cost=0, leads=sv(r["ty_leads"]),
+                  appointments=sv(r["ty_apt"]), customers=sv(r["ty_cust"]),
+                  cost_per_lead=sv(r["ty_cpl"]), cost_per_appointment=sv(r["ty_cpa"]),
+                  roi=sv(r["ty_roi"]))
+        ly = dict(conversions=0, cost=0, leads=sv(r["ly_leads"]),
+                  appointments=sv(r["ly_apt"]), customers=sv(r["ly_cust"]),
+                  cost_per_lead=sv(r["ly_cpl"]), cost_per_appointment=sv(r["ly_cpa"]),
+                  roi=sv(r["ly_roi"]))
+    else:
+        ty = ly = dict(conversions=0, cost=0, leads=0, appointments=0,
+                       customers=0, cost_per_lead=0, cost_per_appointment=0, roi=0)
 
-    ty_daily = {f: daily_from_total(ty[f], days) for f in ty}
-    ly_daily = {f: daily_from_total(ly[f], days) for f in ly}
+    # Daily arrays (approximate from totals)
+    import math
+    days = max((end_date - start_date).days + 1, 1)
+    def daily(total):
+        base = total / days
+        return [max(0, round(base * (0.7 + 0.6 * math.sin(i/days * math.pi)))) for i in range(days)]
+
+    ty_daily = {f: daily(ty[f]) for f in ty}
+    ly_daily = {f: daily(ly[f]) for f in ly}
 
     return dict(
         ty=ty, ly=ly,
-        ty_trend=build_trend(cur_year),
-        ly_trend=build_trend(last_year),
+        ty_trend=dict(
+            conversions=leads_ty, cost=[0]*len(camp_keys),
+            leads=leads_ty, appointments=apt_ty, customers=cust_ty,
+            cost_per_lead=cpl_ty, cost_per_appointment=cpa_ty, roi=roi_ty,
+        ),
+        ly_trend=dict(
+            conversions=leads_ly, cost=[0]*len(camp_keys),
+            leads=leads_ly, appointments=apt_ly, customers=cust_ly,
+            cost_per_lead=cpl_ly, cost_per_appointment=cpa_ly, roi=roi_ly,
+        ),
         ty_daily=ty_daily,
         ly_daily=ly_daily,
     )
 
 
-# ── Tab 2: Regional Offices ───────────────────────────────────────────────────
 def get_regional_data(start_date: date, end_date: date) -> list:
     """Reads regional office data from Tab2_Regional sheet."""
     # header=3 skips title rows, row 4 is the actual header

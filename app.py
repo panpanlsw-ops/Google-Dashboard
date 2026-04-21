@@ -17,6 +17,11 @@ st.markdown("""
     .metric-sub { font-size:10px; color:#9ca3af; margin:3px 0 0; }
     .pace-row { font-size:10px; color:#185FA5; margin-top:6px; padding-top:6px; border-top:0.5px solid #e5e7eb; }
     .pace-projected { font-weight:600; }
+    .badge-row { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+    .badge { font-size:10px; padding:2px 7px; border-radius:20px; font-weight:500; white-space:nowrap; }
+    .badge-mtd { background:#EFF6FF; color:#1e40af; }
+    .badge-full { background:#F0FDF4; color:#166534; }
+    .badge-budget { background:#FDF4FF; color:#6b21a8; }
     div[data-testid="stHorizontalBlock"] { gap:8px; }
 </style>
 """, unsafe_allow_html=True)
@@ -27,15 +32,27 @@ def projected(value, day, days_in_month):
     if day == 0: return 0
     return round((value / day) * days_in_month)
 
-def metric_card(label, value, accent="blue", sub=None, pace_val=None, days_left=None):
-    sub_html = f'<div class="metric-sub">{sub}</div>' if sub else ""
+def metric_card(label, value, accent="blue", sub=None, pace_val=None,
+                days_left=None, ly_mtd=None, ly_full=None, budget=None):
+    sub_html  = f'<div class="metric-sub">{sub}</div>' if sub else ""
     pace_html = (
         f'<div class="pace-row">&#8594; Month-end: <span class="pace-projected">{pace_val}</span> ({days_left}d)</div>'
     ) if pace_val is not None else ""
+    badges = ""
+    has_badge = ly_mtd is not None or ly_full is not None or budget is not None
+    if has_badge:
+        badges = '<div class="badge-row">'
+        if ly_mtd is not None:
+            badges += f'<span class="badge badge-mtd">LY MTD: {ly_mtd}</span>'
+        if ly_full is not None:
+            badges += f'<span class="badge badge-full">LY Full: {ly_full}</span>'
+        if budget is not None:
+            badges += f'<span class="badge badge-budget">Budget: {budget}</span>'
+        badges += '</div>'
     st.markdown(
         f'<div class="metric-card"><div class="metric-accent accent-{accent}"></div>'
         f'<div class="metric-body"><div class="metric-label">{label}</div>'
-        f'<div class="metric-value">{value}</div>{sub_html}{pace_html}</div></div>',
+        f'<div class="metric-value">{value}</div>{sub_html}{badges}{pace_html}</div></div>',
         unsafe_allow_html=True
     )
 
@@ -81,23 +98,33 @@ with tab1:
         st.error(f"❌ Could not load data: {e}")
         d = dict(conversions=0, invoca=0, form=0, cost=0, leads=0, crm_invoca=0, crm_form=0, appointments=0, customers=0)
 
+    ly  = d.get("ly_mtd",  {})
+    lyf = d.get("ly_full", {})
+
+    # Row 1: Conversions, Cost, CRM Leads, Appointments, Customers
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
         metric_card("Conversions", f"{d['conversions']:,}", "blue",
-            f"Invoca {d['invoca']:,} · Form {d['form']:,}",
-            f"{projected(d['conversions'], day_of_month, days_in_month):,}", days_left)
+            f"Invoca {d['crm_invoca']:,} · Form {d['crm_form']:,}",
+            f"{projected(d['conversions'], day_of_month, days_in_month):,}", days_left,
+            ly_mtd=f"{ly.get('conversions',0):,}", ly_full=f"{lyf.get('conversions',0):,}")
     with c2:
-        metric_card("Cost", f"${d['cost']:,}", "blue", None,
-            f"${projected(d['cost'], day_of_month, days_in_month):,}", days_left)
+        metric_card("Cost", f"${d['cost']:,.0f}", "blue", None,
+            f"${projected(d['cost'], day_of_month, days_in_month):,.0f}", days_left,
+            ly_mtd=None, ly_full=None,
+            budget=f"${d.get('budget',0):,.0f}")
     with c3:
         metric_card("CRM Leads", f"{d['leads']:,}", "teal",
             f"Invoca {d['crm_invoca']:,} · Form {d['crm_form']:,}",
-            f"{projected(d['leads'], day_of_month, days_in_month):,}", days_left)
+            f"{projected(d['leads'], day_of_month, days_in_month):,}", days_left,
+            ly_mtd=f"{ly.get('leads',0):,}", ly_full=f"{lyf.get('leads',0):,}")
     with c4:
         metric_card("Appointments", f"{d['appointments']:,}", "teal", None,
-            f"{projected(d['appointments'], day_of_month, days_in_month):,}", days_left)
+            f"{projected(d['appointments'], day_of_month, days_in_month):,}", days_left,
+            ly_mtd=f"{ly.get('appointments',0):,}", ly_full=f"{lyf.get('appointments',0):,}")
     with c5:
-        metric_card("Customers", f"{d['customers']:,}", "teal")
+        metric_card("Customers", f"{d['customers']:,}", "teal", None, None, None,
+            ly_mtd=f"{ly.get('customers',0):,}", ly_full=f"{lyf.get('customers',0):,}")
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("---")
