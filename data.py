@@ -1,249 +1,198 @@
-# data.py
-# ─────────────────────────────────────────────────────────────────────────────
-# All data is read from dashboard_data.xlsx
-# Upload a new Excel file to GitHub daily to update the dashboard
-# Sheets: Tab1_KPI, Tab2_Regional, Tab3_Campaign
-# ─────────────────────────────────────────────────────────────────────────────
+# data.py v3.0
+# Reads all data from dashboard_data.xlsx
+# Tab1_KPI: one row per campaign (All, Brand, Search, Display, Local)
+# Tab2_Regional: one row per regional office
+# Tab3_Campaign: one row per campaign per month
 from datetime import date
 import os
 import pandas as pd
 
 CAMPAIGNS = {
     "all":     "All campaigns",
-    "brand":   "Brand awareness",
-    "search":  "Search — HVAC",
-    "display": "Display retargeting",
-    "local":   "Local services ads",
+    "brand":   "Brand",
+    "search":  "Search",
+    "display": "Display",
+    "local":   "Local",
 }
 
 def _excel_path():
     base = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base, "dashboard_data.xlsx")
 
+def _sv(val):
+    try:
+        v = float(val)
+        return 0.0 if (v != v) else v
+    except:
+        return 0.0
+
 
 # ── Tab 1: KPI Cards ──────────────────────────────────────────────────────────
 def get_data(campaign: str) -> dict:
     """
-    Reads KPI numbers from Tab1_KPI sheet (All campaigns) or
-    Tab1_Campaigns sheet (per campaign breakdown).
-    Rows: 4=Conv,5=Cost,6=Invoca,7=Form,8=CRM,9=Apt,10=Cust,11=CPL,12=CPA,13=ROI
-    Cols: 1=TY, 2=LY MTD, 3=LY Full, 4=Budget
+    Reads KPI numbers from Tab1_KPI sheet.
+    One row per campaign. Columns:
+    A=Campaign, B-K=TY, L-S=LY MTD, T-X=LY Full, Y-Z=Budget, AA=Date
     """
-    xl = pd.ExcelFile(_excel_path())
-
-    def sv(df, idx, col):
-        try:
-            v = df.iloc[idx, col]
-            if v is None or str(v).strip() in ["", "nan", "None"]: return 0
-            return float(v)
-        except:
-            return 0
-
-    def build_dict(df):
-        return dict(
-            conversions  = int(sv(df,4,1)),
-            cost         = sv(df,5,1),
-            budget       = sv(df,5,4),
-            invoca       = int(sv(df,6,1)),
-            form         = int(sv(df,7,1)),
-            leads        = int(sv(df,8,1)),
-            crm_invoca   = int(sv(df,6,1)),
-            crm_form     = int(sv(df,7,1)),
-            appointments = int(sv(df,9,1)),
-            customers    = int(sv(df,10,1)),
-            cost_per_lead= sv(df,11,1),
-            cost_per_apt = sv(df,12,1),
-            roi          = sv(df,13,1),
-            ly_mtd=dict(
-                conversions  =int(sv(df,4,2)), cost=sv(df,5,2),
-                leads        =int(sv(df,8,2)), appointments=int(sv(df,9,2)),
-                customers    =int(sv(df,10,2)),cost_per_lead=sv(df,11,2),
-                cost_per_apt =sv(df,12,2),    roi=sv(df,13,2),
-            ),
-            ly_full=dict(
-                conversions  =int(sv(df,4,3)), cost=sv(df,5,3),
-                leads        =int(sv(df,8,3)), appointments=int(sv(df,9,3)),
-                customers    =int(sv(df,10,3)),cost_per_lead=sv(df,11,3),
-                cost_per_apt =sv(df,12,3),    roi=sv(df,13,3),
-            ),
-        )
-
-    # Try campaign-specific sheet first
-    sheet_map = {
-        "brand":   "Tab1_Brand",
-        "search":  "Tab1_Search",
-        "display": "Tab1_Display",
-        "local":   "Tab1_Local",
-    }
-    sheet_name = sheet_map.get(campaign, "Tab1_KPI")
-    if sheet_name != "Tab1_KPI" and sheet_name not in xl.sheet_names:
-        sheet_name = "Tab1_KPI"  # fallback to all campaigns
-
-    df = pd.read_excel(_excel_path(), sheet_name=sheet_name, header=None)
-    return build_dict(df)
-
-
-# ── Tab 1: ROI Charts (MTD & Comparison) ─────────────────────────────────────
-def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
-    """
-    Reads MTD comparison data from Tab1_MTD sheet.
-    Columns: Campaign, TY Leads, TY Apt, TY Cust, TY CPL, TY CPA, TY ROI,
-                       LY Leads, LY Apt, LY Cust, LY CPL, LY CPA, LY ROI
-    """
-    df = pd.read_excel(_excel_path(), sheet_name="Tab1_MTD", header=4)
+    df = pd.read_excel(_excel_path(), sheet_name="Tab1_KPI", header=4)
     df.columns = [
         "campaign",
-        "ty_leads","ty_apt","ty_cust","ty_cpl","ty_cpa","ty_roi",
-        "ly_leads","ly_apt","ly_cust","ly_cpl","ly_cpa","ly_roi",
+        "ty_conv","ty_cost","ty_invoca","ty_form","ty_leads","ty_apt","ty_cust","ty_cpl","ty_cpa","ty_roi",
+        "ly_conv","ly_cost","ly_leads","ly_apt","ly_cust","ly_cpl","ly_cpa","ly_roi",
+        "lyf_conv","lyf_cost","lyf_leads","lyf_apt","lyf_cust",
+        "bud_conv","bud_cost","date",
     ]
     df = df.dropna(subset=["campaign"])
-    df = df[~df["campaign"].astype(str).str.contains("yellow|blue|legend", case=False, na=False)]
 
-    def sv(val):
-        try:
-            v = float(val)
-            return 0.0 if (v != v) else v
-        except:
-            return 0.0
+    # Map campaign key to row name
+    camp_map = {
+        "all":     "All campaigns",
+        "brand":   "Brand",
+        "search":  "Search",
+        "display": "Display",
+        "local":   "Local",
+    }
+    camp_name = camp_map.get(campaign, "All campaigns")
+    rows = df[df["campaign"].astype(str).str.strip() == camp_name]
+    if rows.empty:
+        rows = df[df["campaign"].astype(str).str.contains("All", case=False, na=False)]
+    if rows.empty:
+        rows = df.head(1)
 
-    def get_row(camp_key):
-        if camp_key == "all":
-            rows = df[df["campaign"].astype(str).str.lower().str.contains("all campaign", na=False)]
-        else:
-            camp_map = {
-                "brand":   "LifeSource Brand",
-                "search":  "Pasadena Single Form",
-                "display": "Orange County",
-                "local":   "Las Vegas",
-            }
-            keyword = camp_map.get(camp_key, "")
-            rows = df[df["campaign"].astype(str).str.contains(keyword, case=False, na=False)]
+    r = rows.iloc[0]
+    sv = lambda f: _sv(r.get(f, 0))
 
-        if rows.empty:
-            return None
-        r = rows.iloc[0]
-        return r
+    return dict(
+        conversions  = int(sv("ty_conv")),
+        cost         = sv("ty_cost"),
+        budget       = sv("bud_cost"),
+        invoca       = int(sv("ty_invoca")),
+        form         = int(sv("ty_form")),
+        leads        = int(sv("ty_leads")),
+        crm_invoca   = int(sv("ty_invoca")),
+        crm_form     = int(sv("ty_form")),
+        appointments = int(sv("ty_apt")),
+        customers    = int(sv("ty_cust")),
+        cost_per_lead= sv("ty_cpl"),
+        cost_per_apt = sv("ty_cpa"),
+        roi          = sv("ty_roi"),
+        ly_mtd=dict(
+            conversions=int(sv("ly_conv")), cost=sv("ly_cost"),
+            leads=int(sv("ly_leads")),      appointments=int(sv("ly_apt")),
+            customers=int(sv("ly_cust")),   cost_per_lead=sv("ly_cpl"),
+            cost_per_apt=sv("ly_cpa"),      roi=sv("ly_roi"),
+        ),
+        ly_full=dict(
+            conversions=int(sv("lyf_conv")), cost=sv("lyf_cost"),
+            leads=int(sv("lyf_leads")),      appointments=int(sv("lyf_apt")),
+            customers=int(sv("lyf_cust")),   cost_per_lead=0,
+            cost_per_apt=0,                  roi=0,
+        ),
+    )
 
-    # Build ty/ly dicts for all campaigns (for bar charts)
-    camp_keys  = list(CAMPAIGNS.keys())
+
+# ── Tab 1: ROI Charts ─────────────────────────────────────────────────────────
+def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
+    """Reads MTD comparison from Tab1_KPI, monthly trend from Tab3_Campaign."""
+    df = pd.read_excel(_excel_path(), sheet_name="Tab1_KPI", header=4)
+    df.columns = [
+        "campaign",
+        "ty_conv","ty_cost","ty_invoca","ty_form","ty_leads","ty_apt","ty_cust","ty_cpl","ty_cpa","ty_roi",
+        "ly_conv","ly_cost","ly_leads","ly_apt","ly_cust","ly_cpl","ly_cpa","ly_roi",
+        "lyf_conv","lyf_cost","lyf_leads","lyf_apt","lyf_cust",
+        "bud_conv","bud_cost","date",
+    ]
+    df = df.dropna(subset=["campaign"])
+
+    camp_map = {"all":"All campaigns","brand":"Brand","search":"Search","display":"Display","local":"Local"}
+    camp_keys = list(CAMPAIGNS.keys())
     camp_names = list(CAMPAIGNS.values())
 
-    def series_all(field_ty, field_ly):
-        ty_vals, ly_vals = [], []
-        for key in camp_keys:
-            r = get_row(key)
-            if r is not None:
-                ty_vals.append(sv(r.get(field_ty, 0)))
-                ly_vals.append(sv(r.get(field_ly, 0)))
-            else:
-                ty_vals.append(0)
-                ly_vals.append(0)
-        return ty_vals, ly_vals
+    def get_row(key):
+        name = camp_map.get(key, "All campaigns")
+        rows = df[df["campaign"].astype(str).str.strip() == name]
+        if rows.empty: rows = df.head(1)
+        return rows.iloc[0]
 
-    leads_ty,  leads_ly  = series_all("ty_leads", "ly_leads")
-    apt_ty,    apt_ly    = series_all("ty_apt",   "ly_apt")
-    cust_ty,   cust_ly   = series_all("ty_cust",  "ly_cust")
-    cpl_ty,    cpl_ly    = series_all("ty_cpl",   "ly_cpl")
-    cpa_ty,    cpa_ly    = series_all("ty_cpa",   "ly_cpa")
-    roi_ty,    roi_ly    = series_all("ty_roi",   "ly_roi")
+    def sv(r, f): return _sv(r.get(f, 0))
 
-    # Single campaign row for ty/ly totals
     r = get_row(campaign)
-    if r is not None:
-        ty = dict(conversions=0, cost=0, leads=sv(r["ty_leads"]),
-                  appointments=sv(r["ty_apt"]), customers=sv(r["ty_cust"]),
-                  cost_per_lead=sv(r["ty_cpl"]), cost_per_appointment=sv(r["ty_cpa"]),
-                  roi=sv(r["ty_roi"]))
-        ly = dict(conversions=0, cost=0, leads=sv(r["ly_leads"]),
-                  appointments=sv(r["ly_apt"]), customers=sv(r["ly_cust"]),
-                  cost_per_lead=sv(r["ly_cpl"]), cost_per_appointment=sv(r["ly_cpa"]),
-                  roi=sv(r["ly_roi"]))
-    else:
-        ty = ly = dict(conversions=0, cost=0, leads=0, appointments=0,
-                       customers=0, cost_per_lead=0, cost_per_appointment=0, roi=0)
+    ty = dict(conversions=int(sv(r,"ty_conv")), cost=sv(r,"ty_cost"),
+              leads=int(sv(r,"ty_leads")), appointments=int(sv(r,"ty_apt")),
+              customers=int(sv(r,"ty_cust")), cost_per_lead=sv(r,"ty_cpl"),
+              cost_per_appointment=sv(r,"ty_cpa"), roi=sv(r,"ty_roi"))
+    ly = dict(conversions=int(sv(r,"ly_conv")), cost=sv(r,"ly_cost"),
+              leads=int(sv(r,"ly_leads")), appointments=int(sv(r,"ly_apt")),
+              customers=int(sv(r,"ly_cust")), cost_per_lead=sv(r,"ly_cpl"),
+              cost_per_appointment=sv(r,"ly_cpa"), roi=sv(r,"ly_roi"))
 
-    # Daily arrays (approximate from totals)
+    # Bar chart series (all campaigns)
+    def series(ty_field, ly_field):
+        return ([int(_sv(get_row(k).get(ty_field,0))) for k in camp_keys],
+                [int(_sv(get_row(k).get(ly_field,0))) for k in camp_keys])
+
+    leads_ty, leads_ly   = series("ty_leads","ly_leads")
+    apt_ty,   apt_ly     = series("ty_apt",  "ly_apt")
+    cust_ty,  cust_ly    = series("ty_cust", "ly_cust")
+    cpl_ty,   cpl_ly     = series("ty_cpl",  "ly_cpl")
+    cpa_ty,   cpa_ly     = series("ty_cpa",  "ly_cpa")
+    roi_ty,   roi_ly     = series("ty_roi",  "ly_roi")
+    conv_ty,  conv_ly    = series("ty_conv", "ly_conv")
+    cost_ty,  cost_ly    = series("ty_cost", "ly_cost")
+
     import math
     days = max((end_date - start_date).days + 1, 1)
     def daily(total):
         base = total / days
-        return [max(0, round(base * (0.7 + 0.6 * math.sin(i/days * math.pi)))) for i in range(days)]
+        return [max(0, round(base*(0.7+0.6*math.sin(i/days*math.pi)))) for i in range(days)]
 
     ty_daily = {f: daily(ty[f]) for f in ty}
     ly_daily = {f: daily(ly[f]) for f in ly}
 
     return dict(
         ty=ty, ly=ly,
-        ty_trend=dict(
-            conversions=leads_ty, cost=[0]*len(camp_keys),
-            leads=leads_ty, appointments=apt_ty, customers=cust_ty,
-            cost_per_lead=cpl_ty, cost_per_appointment=cpa_ty, roi=roi_ty,
-        ),
-        ly_trend=dict(
-            conversions=leads_ly, cost=[0]*len(camp_keys),
-            leads=leads_ly, appointments=apt_ly, customers=cust_ly,
-            cost_per_lead=cpl_ly, cost_per_appointment=cpa_ly, roi=roi_ly,
-        ),
+        ty_trend=dict(conversions=conv_ty, cost=cost_ty, leads=leads_ty,
+                      appointments=apt_ty, customers=cust_ty,
+                      cost_per_lead=cpl_ty, cost_per_appointment=cpa_ty, roi=roi_ty),
+        ly_trend=dict(conversions=conv_ly, cost=cost_ly, leads=leads_ly,
+                      appointments=apt_ly, customers=cust_ly,
+                      cost_per_lead=cpl_ly, cost_per_appointment=cpa_ly, roi=roi_ly),
         ty_daily=ty_daily,
         ly_daily=ly_daily,
     )
 
 
+# ── Tab 2: Regional Offices ───────────────────────────────────────────────────
 def get_regional_data(start_date: date, end_date: date) -> list:
-    """Reads regional office data from Tab2_Regional sheet."""
-    # header=3 skips title rows, row 4 is the actual header
     df = pd.read_excel(_excel_path(), sheet_name="Tab2_Regional", header=3)
-    # Use actual Excel column names
     df = df.rename(columns={
-        "Regional Office": "name",
-        "Unique Leads": "ul",
-        "New Leads": "nl",
-        "Apt": "apt",
-        "Quote": "quote",
-        "Customers": "cust",
-        "Sales Amount": "sales",
-        "NL Customers": "nlc",
-        "NL Sales": "nl_sales",
+        df.columns[0]:"name", df.columns[1]:"ul", df.columns[2]:"nl",
+        df.columns[3]:"apt",  df.columns[4]:"quote", df.columns[5]:"cust",
+        df.columns[6]:"sales",df.columns[7]:"nlc",   df.columns[8]:"nl_sales",
     })
     df = df.dropna(subset=["name"])
     df = df[~df["name"].astype(str).str.contains("row|update|office|regional", case=False, na=False)]
+
     result = []
-    def safe_int(val):
-        try:
-            return int(float(val)) if val is not None and str(val).strip() != "" else 0
-        except:
-            return 0
-
-    def safe_float(val):
-        try:
-            return float(val) if val is not None and str(val).strip() != "" else 0.0
-        except:
-            return 0.0
-
     for _, row in df.iterrows():
         result.append(dict(
             name=str(row["name"]),
-            ul=safe_int(row.get("ul", 0)),
-            nl=safe_int(row.get("nl", 0)),
-            apt=safe_int(row.get("apt", 0)),
-            quote=safe_int(row.get("quote", 0)),
-            cust=safe_int(row.get("cust", 0)),
-            sales=safe_float(row.get("sales", 0)),
-            nlc=safe_int(row.get("nlc", 0)),
-            nl_sales=safe_float(row.get("nl_sales", 0)),
+            ul=int(_sv(row.get("ul",0))),    nl=int(_sv(row.get("nl",0))),
+            apt=int(_sv(row.get("apt",0))),  quote=int(_sv(row.get("quote",0))),
+            cust=int(_sv(row.get("cust",0))),sales=_sv(row.get("sales",0)),
+            nlc=int(_sv(row.get("nlc",0))),  nl_sales=_sv(row.get("nl_sales",0)),
         ))
     return result
 
 
 # ── Tab 3: Campaign Performance ───────────────────────────────────────────────
 def get_campaign_data() -> list:
-    """Reads campaign data from Tab3_Campaign sheet and builds monthly trend."""
     df = pd.read_excel(_excel_path(), sheet_name="Tab3_Campaign", header=3)
     df = df.rename(columns={
-        "Campaign": "campaign", "Year": "year", "Month": "month",
-        "Clicks": "clicks", "Cost": "cost", "Conversions": "conv",
-        "Leads": "leads", "Appointments": "apt", "Customers": "cust",
-        "Sales": "sales", "ROI %": "roi",
+        df.columns[0]:"campaign", df.columns[1]:"year",  df.columns[2]:"month",
+        df.columns[3]:"clicks",   df.columns[4]:"cost",  df.columns[5]:"conv",
+        df.columns[6]:"leads",    df.columns[7]:"apt",   df.columns[8]:"cust",
+        df.columns[9]:"sales",    df.columns[10]:"roi",
     })
     df = df.dropna(subset=["campaign"])
     df = df[~df["campaign"].astype(str).str.contains("campaign|row|update", case=False, na=False)]
@@ -251,31 +200,19 @@ def get_campaign_data() -> list:
     MONTH_MAP = {"Jan":0,"Feb":1,"Mar":2,"Apr":3,"May":4,"Jun":5,
                  "Jul":6,"Aug":7,"Sep":8,"Oct":9,"Nov":10,"Dec":11}
 
-    campaigns = df["campaign"].dropna().unique().tolist()
+    campaigns = df["campaign"].unique().tolist()
     result = []
-
-    def sv(val):
-        try:
-            v = float(val)
-            return 0.0 if pd.isna(v) else v
-        except:
-            return 0.0
-
     for camp in campaigns:
         rows = df[df["campaign"] == camp]
         trend = {}
         for _, row in rows.iterrows():
-            try:
-                yr = int(float(row["year"]))
-            except:
-                continue
+            try: yr = int(float(row["year"]))
+            except: continue
             mo  = str(row["month"]).strip()
             idx = MONTH_MAP.get(mo, 0)
             if yr not in trend:
-                trend[yr] = {f: [0]*12 for f in
-                             ["clicks","cost","conv","leads","apt","cust","sales","roi"]}
+                trend[yr] = {f:[0]*12 for f in ["clicks","cost","conv","leads","apt","cust","sales","roi"]}
             for f in ["clicks","cost","conv","leads","apt","cust","sales","roi"]:
-                trend[yr][f][idx] = sv(row.get(f, 0))
+                trend[yr][f][idx] = _sv(row.get(f,0))
         result.append(dict(name=camp, trend=trend))
-
     return result
