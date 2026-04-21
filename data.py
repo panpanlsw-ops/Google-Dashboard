@@ -25,12 +25,19 @@ def _excel_path():
 def get_data(campaign: str) -> dict:
     """Reads today's KPI numbers from Tab1_KPI sheet."""
     df = pd.read_excel(_excel_path(), sheet_name="Tab1_KPI", header=None)
-    # Rows 5-10 (0-indexed 4-9): Invoca, Form, CRM Leads, Appointments, Customers, Date
-    invoca = int(df.iloc[4, 1])
-    form   = int(df.iloc[5, 1])
-    leads  = int(df.iloc[6, 1])
-    apt    = int(df.iloc[7, 1])
-    cust   = int(df.iloc[8, 1])
+    # Find rows with data - column B has numeric values
+    # Row 5=Invoca(idx4), 6=Form(idx5), 7=CRM(idx6), 8=Apt(idx7), 9=Cust(idx8)
+    def safe_val(idx):
+        try:
+            v = df.iloc[idx, 1]
+            return int(float(v)) if v is not None and str(v).strip() not in ["", "nan", "Value"] else 0
+        except:
+            return 0
+    invoca = safe_val(4)
+    form   = safe_val(5)
+    leads  = safe_val(6)
+    apt    = safe_val(7)
+    cust   = safe_val(8)
     return dict(
         conversions=0, invoca=invoca, form=form, cost=0,
         leads=leads, crm_invoca=invoca, crm_form=form,
@@ -44,9 +51,15 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
     Reads campaign monthly trend from Tab3_Campaign sheet.
     Returns this year vs last year data for MTD charts.
     """
-    df = pd.read_excel(_excel_path(), sheet_name="Tab3_Campaign", header=0)
-    df.columns = ["campaign","year","month","clicks","cost","conv",
-                  "leads","apt","cust","sales","roi"]
+    df = pd.read_excel(_excel_path(), sheet_name="Tab3_Campaign", header=3)
+    df = df.rename(columns={
+        "Campaign": "campaign", "Year": "year", "Month": "month",
+        "Clicks": "clicks", "Cost": "cost", "Conversions": "conv",
+        "Leads": "leads", "Appointments": "apt", "Customers": "cust",
+        "Sales": "sales", "ROI %": "roi",
+    })
+    df = df.dropna(subset=["campaign"])
+    df = df[~df["campaign"].astype(str).str.contains("campaign|row|update", case=False, na=False)]
 
     today = date.today()
     cur_month = today.strftime("%b")
@@ -123,9 +136,22 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
 # ── Tab 2: Regional Offices ───────────────────────────────────────────────────
 def get_regional_data(start_date: date, end_date: date) -> list:
     """Reads regional office data from Tab2_Regional sheet."""
-    df = pd.read_excel(_excel_path(), sheet_name="Tab2_Regional", header=0)
-    df.columns = ["name","ul","nl","apt","quote","cust","sales","nlc","nl_sales"]
+    # header=3 skips title rows, row 4 is the actual header
+    df = pd.read_excel(_excel_path(), sheet_name="Tab2_Regional", header=3)
+    # Use actual Excel column names
+    df = df.rename(columns={
+        "Regional Office": "name",
+        "Unique Leads": "ul",
+        "New Leads": "nl",
+        "Apt": "apt",
+        "Quote": "quote",
+        "Customers": "cust",
+        "Sales Amount": "sales",
+        "NL Customers": "nlc",
+        "NL Sales": "nl_sales",
+    })
     df = df.dropna(subset=["name"])
+    df = df[~df["name"].astype(str).str.contains("row|update|office|regional", case=False, na=False)]
     result = []
     def safe_int(val):
         try:
@@ -157,9 +183,15 @@ def get_regional_data(start_date: date, end_date: date) -> list:
 # ── Tab 3: Campaign Performance ───────────────────────────────────────────────
 def get_campaign_data() -> list:
     """Reads campaign data from Tab3_Campaign sheet and builds monthly trend."""
-    df = pd.read_excel(_excel_path(), sheet_name="Tab3_Campaign", header=0)
-    df.columns = ["campaign","year","month","clicks","cost","conv",
-                  "leads","apt","cust","sales","roi"]
+    df = pd.read_excel(_excel_path(), sheet_name="Tab3_Campaign", header=3)
+    df = df.rename(columns={
+        "Campaign": "campaign", "Year": "year", "Month": "month",
+        "Clicks": "clicks", "Cost": "cost", "Conversions": "conv",
+        "Leads": "leads", "Appointments": "apt", "Customers": "cust",
+        "Sales": "sales", "ROI %": "roi",
+    })
+    df = df.dropna(subset=["campaign"])
+    df = df[~df["campaign"].astype(str).str.contains("campaign|row|update", case=False, na=False)]
 
     MONTH_MAP = {"Jan":0,"Feb":1,"Mar":2,"Apr":3,"May":4,"Jun":5,
                  "Jul":6,"Aug":7,"Sep":8,"Oct":9,"Nov":10,"Dec":11}
