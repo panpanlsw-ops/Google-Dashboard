@@ -24,15 +24,14 @@ def _excel_path():
 # ── Tab 1: KPI Cards ──────────────────────────────────────────────────────────
 def get_data(campaign: str) -> dict:
     """
-    Reads KPI numbers from Tab1_KPI sheet.
-    Rows (0-indexed from row 5):
-      4=Conversions, 5=Cost, 6=Invoca, 7=Form, 8=CRM Leads,
-      9=Appointments, 10=Customers, 11=CPL, 12=CPA, 13=ROI
+    Reads KPI numbers from Tab1_KPI sheet (All campaigns) or
+    Tab1_Campaigns sheet (per campaign breakdown).
+    Rows: 4=Conv,5=Cost,6=Invoca,7=Form,8=CRM,9=Apt,10=Cust,11=CPL,12=CPA,13=ROI
     Cols: 1=TY, 2=LY MTD, 3=LY Full, 4=Budget
     """
-    df = pd.read_excel(_excel_path(), sheet_name="Tab1_KPI", header=None)
+    xl = pd.ExcelFile(_excel_path())
 
-    def sv(idx, col):
+    def sv(df, idx, col):
         try:
             v = df.iloc[idx, col]
             if v is None or str(v).strip() in ["", "nan", "None"]: return 0
@@ -40,41 +39,48 @@ def get_data(campaign: str) -> dict:
         except:
             return 0
 
-    return dict(
-        conversions=int(sv(4,1)),
-        cost=sv(5,1),
-        budget=sv(5,4),
-        invoca=int(sv(6,1)),
-        form=int(sv(7,1)),
-        leads=int(sv(8,1)),
-        crm_invoca=int(sv(6,1)),
-        crm_form=int(sv(7,1)),
-        appointments=int(sv(9,1)),
-        customers=int(sv(10,1)),
-        cost_per_lead=sv(11,1),
-        cost_per_apt=sv(12,1),
-        roi=sv(13,1),
-        ly_mtd=dict(
-            conversions=int(sv(4,2)),
-            cost=sv(5,2),
-            leads=int(sv(8,2)),
-            appointments=int(sv(9,2)),
-            customers=int(sv(10,2)),
-            cost_per_lead=sv(11,2),
-            cost_per_apt=sv(12,2),
-            roi=sv(13,2),
-        ),
-        ly_full=dict(
-            conversions=int(sv(4,3)),
-            cost=sv(5,3),
-            leads=int(sv(8,3)),
-            appointments=int(sv(9,3)),
-            customers=int(sv(10,3)),
-            cost_per_lead=sv(11,3),
-            cost_per_apt=sv(12,3),
-            roi=sv(13,3),
-        ),
-    )
+    def build_dict(df):
+        return dict(
+            conversions  = int(sv(df,4,1)),
+            cost         = sv(df,5,1),
+            budget       = sv(df,5,4),
+            invoca       = int(sv(df,6,1)),
+            form         = int(sv(df,7,1)),
+            leads        = int(sv(df,8,1)),
+            crm_invoca   = int(sv(df,6,1)),
+            crm_form     = int(sv(df,7,1)),
+            appointments = int(sv(df,9,1)),
+            customers    = int(sv(df,10,1)),
+            cost_per_lead= sv(df,11,1),
+            cost_per_apt = sv(df,12,1),
+            roi          = sv(df,13,1),
+            ly_mtd=dict(
+                conversions  =int(sv(df,4,2)), cost=sv(df,5,2),
+                leads        =int(sv(df,8,2)), appointments=int(sv(df,9,2)),
+                customers    =int(sv(df,10,2)),cost_per_lead=sv(df,11,2),
+                cost_per_apt =sv(df,12,2),    roi=sv(df,13,2),
+            ),
+            ly_full=dict(
+                conversions  =int(sv(df,4,3)), cost=sv(df,5,3),
+                leads        =int(sv(df,8,3)), appointments=int(sv(df,9,3)),
+                customers    =int(sv(df,10,3)),cost_per_lead=sv(df,11,3),
+                cost_per_apt =sv(df,12,3),    roi=sv(df,13,3),
+            ),
+        )
+
+    # Try campaign-specific sheet first
+    sheet_map = {
+        "brand":   "Tab1_Brand",
+        "search":  "Tab1_Search",
+        "display": "Tab1_Display",
+        "local":   "Tab1_Local",
+    }
+    sheet_name = sheet_map.get(campaign, "Tab1_KPI")
+    if sheet_name != "Tab1_KPI" and sheet_name not in xl.sheet_names:
+        sheet_name = "Tab1_KPI"  # fallback to all campaigns
+
+    df = pd.read_excel(_excel_path(), sheet_name=sheet_name, header=None)
+    return build_dict(df)
 
 
 # ── Tab 1: ROI Charts (MTD & Comparison) ─────────────────────────────────────
