@@ -77,10 +77,8 @@ with tab1:
 
     try:
         d = get_data(campaign)
-        if all(v == 0 for v in d.values()):
-            st.warning("⚠️ All values are 0 — database may not have data for this date range, or connection failed. Check Manage App → Logs.")
     except Exception as e:
-        st.error(f"❌ Error loading data: {e}")
+        st.error(f"❌ Could not load data: {e}")
         d = dict(conversions=0, invoca=0, form=0, cost=0, leads=0, crm_invoca=0, crm_form=0, appointments=0, customers=0)
 
     c1, c2, c3, c4, c5 = st.columns(5)
@@ -204,12 +202,17 @@ with tab2:
     with r1: metric_card("Total Leads",  f"{total_nl:,}",          "blue")
     with r2: metric_card("Appointments", f"{total_apt:,}",         "blue")
     with r3: metric_card("Customers",    f"{total_cust:,}",        "teal")
-    with r4: metric_card("Total Sales",  f"${total_sales:,.0f}",   "teal")
+    with r4: metric_card("Total Sales",  f"${float(total_sales or 0):,.0f}", "teal")
     with r5: metric_card("Apt / Leads",  f"{round(total_apt/total_nl*100) if total_nl else 0}%", "teal")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    def money(n): return f"${n:,.2f}" if n else "$0.00"
+    def money(n):
+        try:
+            v = float(n)
+            return f"${v:,.2f}" if v == v else "$0.00"  # NaN check
+        except:
+            return "$0.00"
 
     COLORS = ["#378ADD","#1D9E75","#534AB7","#D85A30","#BA7517","#D4537E",
               "#639922","#888780","#E24B4A","#7F77DD","#5DCAA5","#F0997B",
@@ -221,16 +224,23 @@ with tab2:
     pie_sales = []
 
     for i, o in enumerate(offices):
-        lp  = o["nl"]    / total_nl    * 100 if total_nl    else 0
-        sp  = o["sales"] / total_sales * 100 if total_sales else 0
-        al  = o["apt"]   / o["nl"]     * 100 if o["nl"]     else 0
-        oa  = o["cust"]  / o["apt"]    * 100 if o["apt"]    else None
-        ol  = o["cust"]  / o["nl"]     * 100 if o["nl"]     else 0
+        def sf(v):
+            try:
+                f = float(v)
+                return 0.0 if (f != f) else f  # NaN check
+            except:
+                return 0.0
+
+        lp  = sf(o["nl"])    / sf(total_nl)    * 100 if sf(total_nl)    else 0
+        sp  = sf(o["sales"]) / sf(total_sales) * 100 if sf(total_sales) else 0
+        al  = sf(o["apt"])   / sf(o["nl"])     * 100 if sf(o["nl"])     else 0
+        oa  = sf(o["cust"])  / sf(o["apt"])    * 100 if sf(o["apt"])    else None
+        ol  = sf(o["cust"])  / sf(o["nl"])     * 100 if sf(o["nl"])     else 0
         pie_names.append(o["name"])
         pie_leads.append(round(lp, 1))
         pie_sales.append(round(sp, 1))
-        bar_w_l = min(int(lp / 20 * 100), 100)
-        bar_w_s = min(int(sp / 25 * 100), 100)
+        bar_w_l = min(int(lp / 20 * 100), 100) if lp == lp else 0
+        bar_w_s = min(int(sp / 25 * 100), 100) if sp == sp else 0
         lp_badge = f'<span style="font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px;background:#d1fae5;color:#065f46;">{lp:.2f}%</span>' if lp >= 10 else f'<span style="font-size:11px;color:#374151;">{lp:.2f}%</span>'
         sp_badge = f'<span style="font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px;background:#d1fae5;color:#065f46;">{sp:.2f}%</span>' if sp >= 10 else f'<span style="font-size:11px;color:#374151;">{sp:.2f}%</span>'
         al_badge = f'<span style="font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px;background:#dbeafe;color:#1e40af;">{al:.2f}%</span>' if al >= 50 else f'<span style="font-size:11px;color:#374151;">{al:.2f}%</span>'
