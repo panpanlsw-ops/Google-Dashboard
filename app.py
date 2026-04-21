@@ -95,8 +95,15 @@ with tab1:
     try:
         d = get_data(campaign)
     except Exception as e:
+        import traceback
         st.error(f"❌ Could not load data: {e}")
-        d = dict(conversions=0, invoca=0, form=0, cost=0, leads=0, crm_invoca=0, crm_form=0, appointments=0, customers=0)
+        st.code(traceback.format_exc())
+        empty_ly = dict(conversions=0,cost=0,leads=0,appointments=0,customers=0,
+                        cost_per_lead=0,cost_per_apt=0,roi=0)
+        d = dict(conversions=0,invoca=0,form=0,cost=0,budget=0,
+                 leads=0,crm_invoca=0,crm_form=0,appointments=0,customers=0,
+                 cost_per_lead=0,cost_per_apt=0,roi=0,
+                 ly_mtd=empty_ly, ly_full=empty_ly)
 
     ly  = d.get("ly_mtd",  {})
     lyf = d.get("ly_full", {})
