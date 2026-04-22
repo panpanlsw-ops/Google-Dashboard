@@ -37,10 +37,15 @@ def get_data(campaign: str) -> dict:
     df = pd.read_excel(_excel_path(), sheet_name="Tab1_KPI", header=4)
     df.columns = [
         "campaign",
-        "ty_conv","ty_cost","ty_invoca","ty_form","ty_leads","ty_apt","ty_cust","ty_cpl","ty_cpa","ty_roi",
+        "ty_conv","ty_conv_invoca","ty_conv_form",
+        "ty_cost",
+        "ty_leads","ty_crm_invoca","ty_crm_form",
+        "ty_apt","ty_cust","ty_cpl","ty_cpa","ty_roi",
         "ly_conv","ly_cost","ly_leads","ly_apt","ly_cust","ly_cpl","ly_cpa","ly_roi",
         "lyf_conv","lyf_cost","lyf_leads","lyf_apt","lyf_cust",
-        "bud_conv","bud_cost","date",
+        "bud_conv","bud_cost",
+        "lm_leads","lm_apt",
+        "date",
     ]
     df = df.dropna(subset=["campaign"])
 
@@ -66,16 +71,20 @@ def get_data(campaign: str) -> dict:
         conversions  = int(sv("ty_conv")),
         cost         = sv("ty_cost"),
         budget       = sv("bud_cost"),
-        invoca       = int(sv("ty_invoca")),
-        form         = int(sv("ty_form")),
+        invoca       = int(sv("ty_conv_invoca")),
+        form         = int(sv("ty_conv_form")),
         leads        = int(sv("ty_leads")),
-        crm_invoca   = int(sv("ty_invoca")),
-        crm_form     = int(sv("ty_form")),
+        crm_invoca   = int(sv("ty_crm_invoca")),
+        crm_form     = int(sv("ty_crm_form")),
         appointments = int(sv("ty_apt")),
         customers    = int(sv("ty_cust")),
         cost_per_lead= sv("ty_cpl"),
         cost_per_apt = sv("ty_cpa"),
         roi          = sv("ty_roi"),
+        lm_full=dict(
+            leads        = int(sv("lm_leads")),
+            appointments = int(sv("lm_apt")),
+        ),
         ly_mtd=dict(
             conversions=int(sv("ly_conv")), cost=sv("ly_cost"),
             leads=int(sv("ly_leads")),      appointments=int(sv("ly_apt")),
@@ -97,10 +106,15 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
     df = pd.read_excel(_excel_path(), sheet_name="Tab1_KPI", header=4)
     df.columns = [
         "campaign",
-        "ty_conv","ty_cost","ty_invoca","ty_form","ty_leads","ty_apt","ty_cust","ty_cpl","ty_cpa","ty_roi",
+        "ty_conv","ty_conv_invoca","ty_conv_form",
+        "ty_cost",
+        "ty_leads","ty_crm_invoca","ty_crm_form",
+        "ty_apt","ty_cust","ty_cpl","ty_cpa","ty_roi",
         "ly_conv","ly_cost","ly_leads","ly_apt","ly_cust","ly_cpl","ly_cpa","ly_roi",
         "lyf_conv","lyf_cost","lyf_leads","lyf_apt","lyf_cust",
-        "bud_conv","bud_cost","date",
+        "bud_conv","bud_cost",
+        "lm_leads","lm_apt",
+        "date",
     ]
     df = df.dropna(subset=["campaign"])
 
