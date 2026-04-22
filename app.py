@@ -168,8 +168,8 @@ with tab1:
         labels    = list(CAMPAIGNS.values())
         camp_keys = list(CAMPAIGNS.keys())
         def series(field):
-            ty = [get_roi_data(k, roi_start, roi_end)["ty"][field] for k in camp_keys]
-            ly = [get_roi_data(k, roi_start, roi_end)["ly"][field] for k in camp_keys]
+            ty = [get_roi_data(name, roi_start, roi_end)["ty"][field] for name in camp_keys]
+            ly = [get_roi_data(name, roi_start, roi_end)["ly"][field] for name in camp_keys]
             return ty, ly
     else:
         # Daily labels: Apr 1, Apr 2 ... Apr (yesterday)
@@ -196,7 +196,7 @@ with tab1:
         def get_series(field_ty, field_ly):
             ty_vals, ly_vals = [], []
             for name in camp_keys:
-                r = get_roi_data(k, roi_start, roi_end)
+                r = get_roi_data(name, roi_start, roi_end)
                 ty_vals.append(r["ty"].get(field_ty, 0))
                 ly_vals.append(r["ly"].get(field_ly, 0))
             return ty_vals, ly_vals
