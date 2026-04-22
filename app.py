@@ -156,9 +156,9 @@ with tab1:
             unsafe_allow_html=True
         )
 
-    is_all = (campaign == "all")
+    is_all = (campaign == "All campaigns")
     hint = "Showing all campaigns MTD — select a specific campaign to see monthly comparison" if is_all \
-           else f"MTD & monthly comparison for {CAMPAIGNS[campaign]}"
+           else f"MTD & monthly comparison for {campaign}"
     st.caption(hint)
 
     roi = get_roi_data(campaign, roi_start, roi_end)
@@ -187,15 +187,15 @@ with tab1:
     roi_ty,   roi_ly   = series("roi")
 
     # ── MTD Charts ────────────────────────────────────────────────────────────
-    is_all = (campaign == "all")
-    camp_keys  = list(CAMPAIGNS.keys())
+    is_all = (campaign == "All campaigns")
+    camp_keys  = list(CAMPAIGNS.values())
     camp_names = list(CAMPAIGNS.values())
 
     if is_all:
         # Bar charts: all campaigns side by side
         def get_series(field_ty, field_ly):
             ty_vals, ly_vals = [], []
-            for k in camp_keys:
+            for name in camp_keys:
                 r = get_roi_data(k, roi_start, roi_end)
                 ty_vals.append(r["ty"].get(field_ty, 0))
                 ly_vals.append(r["ly"].get(field_ly, 0))
@@ -206,7 +206,7 @@ with tab1:
         def get_series(field_ty, field_ly):
             r = get_roi_data(campaign, roi_start, roi_end)
             return [r["ty"].get(field_ty, 0)], [r["ly"].get(field_ly, 0)]
-        labels = [CAMPAIGNS[campaign]]
+        labels = [campaign]
 
     conv_ty,  conv_ly  = get_series("conversions",         "conversions")
     cost_ty,  cost_ly  = get_series("cost",                "cost")
@@ -326,24 +326,25 @@ with tab1:
     st.markdown("---")
 
     # ── Bar Charts ─────────────────────────────────────────────────────────────
-    is_all = (campaign == "all")
-    camp_keys  = list(CAMPAIGNS.keys())
+    is_all = (campaign == "All campaigns")
+    camp_keys  = list(CAMPAIGNS.values())
     camp_names = list(CAMPAIGNS.values())
 
+    all_camp_names = list(CAMPAIGNS.values())
     if is_all:
         def get_series(field_ty, field_ly):
             ty_vals, ly_vals = [], []
-            for k in camp_keys:
-                r = get_roi_data(k, roi_start, roi_end)
+            for name in all_camp_names:
+                r = get_roi_data(name, roi_start, roi_end)
                 ty_vals.append(r["ty"].get(field_ty, 0))
                 ly_vals.append(r["ly"].get(field_ly, 0))
             return ty_vals, ly_vals
-        labels = camp_names
+        labels = all_camp_names
     else:
         def get_series(field_ty, field_ly):
             r = get_roi_data(campaign, roi_start, roi_end)
             return [r["ty"].get(field_ty, 0)], [r["ly"].get(field_ly, 0)]
-        labels = [CAMPAIGNS[campaign]]
+        labels = [campaign]
 
     conv_ty,  conv_ly  = get_series("conversions",         "conversions")
     cost_ty,  cost_ly  = get_series("cost",                "cost")
