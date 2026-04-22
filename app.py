@@ -178,32 +178,126 @@ with tab1:
     cpa_ty,   cpa_ly   = series("cost_per_appointment")
     roi_ty,   roi_ly   = series("roi")
 
-    # Build chart data — bar charts showing MTD totals per campaign
+    # ── MTD Charts ────────────────────────────────────────────────────────────
+    is_all = (campaign == "all")
     camp_keys  = list(CAMPAIGNS.keys())
     camp_names = list(CAMPAIGNS.values())
 
-    def get_series(field_ty, field_ly):
-        ty_vals, ly_vals = [], []
-        for k in camp_keys:
-            r = get_roi_data(k, roi_start, roi_end)
-            ty_vals.append(r["ty"].get(field_ty, 0))
-            ly_vals.append(r["ly"].get(field_ly, 0))
-        return ty_vals, ly_vals
+    if is_all:
+        # Bar charts: all campaigns side by side
+        def get_series(field_ty, field_ly):
+            ty_vals, ly_vals = [], []
+            for k in camp_keys:
+                r = get_roi_data(k, roi_start, roi_end)
+                ty_vals.append(r["ty"].get(field_ty, 0))
+                ly_vals.append(r["ly"].get(field_ly, 0))
+            return ty_vals, ly_vals
+        labels = camp_names
+    else:
+        # Single campaign: show TY vs LY as 2 bars only
+        def get_series(field_ty, field_ly):
+            r = get_roi_data(campaign, roi_start, roi_end)
+            return [r["ty"].get(field_ty, 0)], [r["ly"].get(field_ly, 0)]
+        labels = [CAMPAIGNS[campaign]]
 
-    conv_ty,  conv_ly  = get_series("conversions",        "conversions")
-    cost_ty,  cost_ly  = get_series("cost",               "cost")
-    leads_ty, leads_ly = get_series("leads",              "leads")
-    apt_ty,   apt_ly   = get_series("appointments",       "appointments")
-    cust_ty,  cust_ly  = get_series("customers",          "customers")
-    cpl_ty,   cpl_ly   = get_series("cost_per_lead",      "cost_per_lead")
+    conv_ty,  conv_ly  = get_series("conversions",         "conversions")
+    cost_ty,  cost_ly  = get_series("cost",                "cost")
+    leads_ty, leads_ly = get_series("leads",               "leads")
+    apt_ty,   apt_ly   = get_series("appointments",        "appointments")
+    cust_ty,  cust_ly  = get_series("customers",           "customers")
+    cpl_ty,   cpl_ly   = get_series("cost_per_lead",       "cost_per_lead")
     cpa_ty,   cpa_ly   = get_series("cost_per_appointment","cost_per_appointment")
-    roi_ty,   roi_ly   = get_series("roi",                "roi")
+    roi_ty,   roi_ly   = get_series("roi",                 "roi")
 
-    # Pace data: projected month-end for leads and appointments
-    leads_pace_ty = [round(v / day_of_month * days_in_month) if day_of_month else 0 for v in leads_ty]
-    leads_pace_ly = [round(v / day_of_month * days_in_month) if day_of_month else 0 for v in leads_ly]
-    apt_pace_ty   = [round(v / day_of_month * days_in_month) if day_of_month else 0 for v in apt_ty]
-    apt_pace_ly   = [round(v / day_of_month * days_in_month) if day_of_month else 0 for v in apt_ly]
+    # ── Gauge data for Leads and Appointments ────────────────────────────────
+    roi_d       = get_roi_data(campaign, roi_start, roi_end)
+    g_leads_ty  = int(roi_d["ty"].get("leads", 0))
+    g_leads_ly  = int(roi_d["ly"].get("leads", 0))
+    g_apt_ty    = int(roi_d["ty"].get("appointments", 0))
+    g_apt_ly    = int(roi_d["ly"].get("appointments", 0))
+    lyf_d       = d.get("ly_full", {})
+    g_leads_lyf = int(lyf_d.get("leads", 0))
+    g_apt_lyf   = int(lyf_d.get("appointments", 0))
+    g_leads_pace= projected(g_leads_ty, day_of_month, days_in_month)
+    g_apt_pace  = projected(g_apt_ty,   day_of_month, days_in_month)
+
+    # Gauge arc calculation (semicircle = 251.3 total length)
+    ARC = 251.3
+    def arc_offset(val, total):
+        if total == 0: return ARC
+        pct = min(val / total, 1.0)
+        return round(ARC - pct * ARC, 1)
+
+    # Leads gauge
+    l_total   = max(g_leads_lyf, g_leads_pace, 1)
+    l_ty_off  = arc_offset(g_leads_ty,   l_total)
+    l_pace_off= arc_offset(g_leads_pace, l_total)
+    l_ly_off  = arc_offset(g_leads_ly,   l_total)
+    l_pct     = round(g_leads_ty / g_leads_lyf * 100) if g_leads_lyf else 0
+    l_pace_pct= round(g_leads_pace / g_leads_lyf * 100) if g_leads_lyf else 0
+
+    # Appointments gauge
+    a_total   = max(g_apt_lyf, g_apt_pace, 1)
+    a_ty_off  = arc_offset(g_apt_ty,   a_total)
+    a_pace_off= arc_offset(g_apt_pace, a_total)
+    a_ly_off  = arc_offset(g_apt_ly,   a_total)
+    a_pct     = round(g_apt_ty / g_apt_lyf * 100) if g_apt_lyf else 0
+    a_pace_pct= round(g_apt_pace / g_apt_lyf * 100) if g_apt_lyf else 0
+
+    gauge_html = f"""
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+      <div style="background:#fff;border:0.5px solid #e5e7eb;border-radius:10px;padding:16px;">
+        <div style="font-size:11px;font-weight:500;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Leads — MTD Pace</div>
+        <div style="font-size:10px;color:#9ca3af;margin-bottom:10px;">vs Last Year Full Month: {g_leads_lyf:,}</div>
+        <svg viewBox="0 0 200 115" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:220px;display:block;margin:0 auto;">
+          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#f3f4f6" stroke-width="18" stroke-linecap="round"/>
+          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#9FE1CB" stroke-width="18" stroke-linecap="round" stroke-dasharray="{ARC}" stroke-dashoffset="{l_pace_off}" opacity="0.6"/>
+          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1D9E75" stroke-width="18" stroke-linecap="round" stroke-dasharray="{ARC}" stroke-dashoffset="{l_ty_off}"/>
+          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#9ca3af" stroke-width="5" stroke-linecap="round" stroke-dasharray="{ARC}" stroke-dashoffset="{l_ly_off}" opacity="0.5"/>
+          <text x="100" y="85" text-anchor="middle" font-size="20" font-weight="600" fill="#111827">{l_pct}%</text>
+          <text x="100" y="100" text-anchor="middle" font-size="9" fill="#9ca3af">of LY full month</text>
+          <text x="20" y="113" text-anchor="middle" font-size="9" fill="#9ca3af">0</text>
+          <text x="180" y="113" text-anchor="middle" font-size="9" fill="#9ca3af">{g_leads_lyf:,}</text>
+        </svg>
+        <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:0.5px solid #e5e7eb;">
+          <div style="text-align:center;"><div style="font-size:13px;font-weight:600;color:#1D9E75;">{g_leads_ty:,}</div><div style="font-size:10px;color:#9ca3af;">TY MTD</div></div>
+          <div style="text-align:center;"><div style="font-size:13px;font-weight:600;color:#9FE1CB;">{g_leads_pace:,}</div><div style="font-size:10px;color:#9ca3af;">TY Pace</div></div>
+          <div style="text-align:center;"><div style="font-size:13px;font-weight:600;color:#9ca3af;">{g_leads_ly:,}</div><div style="font-size:10px;color:#9ca3af;">LY MTD</div></div>
+          <div style="text-align:center;"><div style="font-size:13px;font-weight:600;color:#374151;">{g_leads_lyf:,}</div><div style="font-size:10px;color:#9ca3af;">LY Full</div></div>
+        </div>
+      </div>
+
+      <div style="background:#fff;border:0.5px solid #e5e7eb;border-radius:10px;padding:16px;">
+        <div style="font-size:11px;font-weight:500;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Appointments — MTD Pace</div>
+        <div style="font-size:10px;color:#9ca3af;margin-bottom:10px;">vs Last Year Full Month: {g_apt_lyf:,}</div>
+        <svg viewBox="0 0 200 115" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:220px;display:block;margin:0 auto;">
+          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#f3f4f6" stroke-width="18" stroke-linecap="round"/>
+          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#9FE1CB" stroke-width="18" stroke-linecap="round" stroke-dasharray="{ARC}" stroke-dashoffset="{a_pace_off}" opacity="0.6"/>
+          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1D9E75" stroke-width="18" stroke-linecap="round" stroke-dasharray="{ARC}" stroke-dashoffset="{a_ty_off}"/>
+          <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#9ca3af" stroke-width="5" stroke-linecap="round" stroke-dasharray="{ARC}" stroke-dashoffset="{a_ly_off}" opacity="0.5"/>
+          <text x="100" y="85" text-anchor="middle" font-size="20" font-weight="600" fill="#111827">{a_pct}%</text>
+          <text x="100" y="100" text-anchor="middle" font-size="9" fill="#9ca3af">of LY full month</text>
+          <text x="20" y="113" text-anchor="middle" font-size="9" fill="#9ca3af">0</text>
+          <text x="180" y="113" text-anchor="middle" font-size="9" fill="#9ca3af">{g_apt_lyf:,}</text>
+        </svg>
+        <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:0.5px solid #e5e7eb;">
+          <div style="text-align:center;"><div style="font-size:13px;font-weight:600;color:#1D9E75;">{g_apt_ty:,}</div><div style="font-size:10px;color:#9ca3af;">TY MTD</div></div>
+          <div style="text-align:center;"><div style="font-size:13px;font-weight:600;color:#9FE1CB;">{g_apt_pace:,}</div><div style="font-size:10px;color:#9ca3af;">TY Pace</div></div>
+          <div style="text-align:center;"><div style="font-size:13px;font-weight:600;color:#9ca3af;">{g_apt_ly:,}</div><div style="font-size:10px;color:#9ca3af;">LY MTD</div></div>
+          <div style="text-align:center;"><div style="font-size:13px;font-weight:600;color:#374151;">{g_apt_lyf:,}</div><div style="font-size:10px;color:#9ca3af;">LY Full</div></div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:16px;margin-bottom:16px;justify-content:center;">
+      <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280;"><span style="width:12px;height:4px;background:#1D9E75;border-radius:2px;display:inline-block;"></span>TY MTD</span>
+      <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280;"><span style="width:12px;height:4px;background:#9FE1CB;border-radius:2px;display:inline-block;"></span>TY Pace</span>
+      <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280;"><span style="width:12px;height:4px;background:#9ca3af;border-radius:2px;display:inline-block;"></span>LY MTD</span>
+      <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280;"><span style="width:12px;height:4px;background:#f3f4f6;border-radius:2px;border:0.5px solid #e5e7eb;display:inline-block;"></span>LY Full Month (target)</span>
+    </div>
+    """
+    st.components.v1.html(gauge_html, height=300, scrolling=False)
+
+    st.markdown("---")
 
     chart_html = f"""
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
@@ -213,39 +307,34 @@ with tab1:
         f'<div style="display:flex;gap:12px;margin-bottom:8px;">'
         f'<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#6b7280;"><span style="width:10px;height:10px;border-radius:2px;background:{cy};display:inline-block;"></span>This year MTD</span>'
         f'<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#6b7280;"><span style="width:10px;height:10px;border-radius:2px;background:{lc};display:inline-block;"></span>Last year MTD</span>'
-        f'{"<span style=\'display:flex;align-items:center;gap:4px;font-size:11px;color:#6b7280;\'><span style=\'width:10px;height:10px;border-radius:2px;background:#9ca3af;display:inline-block;\'></span>Pace</span>" if pace else ""}'
         f'</div><div style="position:relative;height:190px;"><canvas id="{cid}"></canvas></div></div>'
-        for title,cid,cy,lc,span,pace in [
-            ("Conversions","c1","#378ADD","#B5D4F4","",False),
-            ("Cost","c2","#378ADD","#B5D4F4","",False),
-            ("CRM Leads","c3","#1D9E75","#9FE1CB","",False),
-            ("Appointments","c4","#1D9E75","#9FE1CB","",False),
-            ("Customers","c5","#1D9E75","#9FE1CB","",False),
-            ("Cost per Lead","c6","#534AB7","#AFA9EC","",False),
-            ("Cost per Appointment","c7","#534AB7","#AFA9EC","",False),
-            ("ROI %","c8","#BA7517","#FAC775","grid-column:span 2;",False),
-            ("Leads — MTD vs Pace","c9","#1D9E75","#9FE1CB","",True),
-            ("Appointments — MTD vs Pace","c10","#1D9E75","#9FE1CB","",True),
+        for title,cid,cy,lc,span in [
+            ("Conversions","c1","#378ADD","#B5D4F4",""),
+            ("Cost","c2","#378ADD","#B5D4F4",""),
+            ("CRM Leads","c3","#1D9E75","#9FE1CB",""),
+            ("Appointments","c4","#1D9E75","#9FE1CB",""),
+            ("Customers","c5","#1D9E75","#9FE1CB",""),
+            ("Cost per Lead","c6","#534AB7","#AFA9EC",""),
+            ("Cost per Appointment","c7","#534AB7","#AFA9EC",""),
+            ("ROI %","c8","#BA7517","#FAC775","grid-column:span 2;"),
         ]
       ])}
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script>
-    const LABELS={camp_names};
-    const isRoi=[false,false,false,false,false,false,false,true,false,false];
+    const LABELS={labels};
+    const isRoi=[false,false,false,false,false,false,false,true];
     const CHARTS=[
-      ["c1",{conv_ty},{conv_ly},null,null,"#378ADD","#B5D4F4"],
-      ["c2",{cost_ty},{cost_ly},null,null,"#378ADD","#B5D4F4"],
-      ["c3",{leads_ty},{leads_ly},null,null,"#1D9E75","#9FE1CB"],
-      ["c4",{apt_ty},{apt_ly},null,null,"#1D9E75","#9FE1CB"],
-      ["c5",{cust_ty},{cust_ly},null,null,"#1D9E75","#9FE1CB"],
-      ["c6",{cpl_ty},{cpl_ly},null,null,"#534AB7","#AFA9EC"],
-      ["c7",{cpa_ty},{cpa_ly},null,null,"#534AB7","#AFA9EC"],
-      ["c8",{roi_ty},{roi_ly},null,null,"#BA7517","#FAC775"],
-      ["c9",{leads_ty},{leads_ly},{leads_pace_ty},{leads_pace_ly},"#1D9E75","#9FE1CB"],
-      ["c10",{apt_ty},{apt_ly},{apt_pace_ty},{apt_pace_ly},"#1D9E75","#9FE1CB"],
+      ["c1",{conv_ty},{conv_ly},"#378ADD","#B5D4F4"],
+      ["c2",{cost_ty},{cost_ly},"#378ADD","#B5D4F4"],
+      ["c3",{leads_ty},{leads_ly},"#1D9E75","#9FE1CB"],
+      ["c4",{apt_ty},{apt_ly},"#1D9E75","#9FE1CB"],
+      ["c5",{cust_ty},{cust_ly},"#1D9E75","#9FE1CB"],
+      ["c6",{cpl_ty},{cpl_ly},"#534AB7","#AFA9EC"],
+      ["c7",{cpa_ty},{cpa_ly},"#534AB7","#AFA9EC"],
+      ["c8",{roi_ty},{roi_ly},"#BA7517","#FAC775"],
     ];
-    CHARTS.forEach(([cid,tyD,lyD,pTy,pLy,tyC,lyC],i)=>{{
+    CHARTS.forEach(([cid,tyD,lyD,tyC,lyC],i)=>{{
       const r=isRoi[i];
       const opts={{responsive:true,maintainAspectRatio:false,
         plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:ctx=>r?' '+ctx.parsed.y+'%':' '+ctx.parsed.y.toLocaleString()}}}}}},
@@ -254,14 +343,11 @@ with tab1:
           y:{{ticks:{{font:{{size:10}},callback:r?(v=>v+'%'):(v=>v.toLocaleString())}},grid:{{color:"#f3f4f6"}}}}
         }}
       }};
-      const datasets=[
+      new Chart(document.getElementById(cid),{{type:'bar',data:{{labels:LABELS,datasets:[
         {{data:tyD,backgroundColor:tyC,borderRadius:4}},
         {{data:lyD,backgroundColor:lyC,borderRadius:4}},
-      ];
-      if(pTy) datasets.push({{data:pTy,backgroundColor:"#9ca3af",borderRadius:4,borderDash:[4,3]}});
-      if(pLy) datasets.push({{data:pLy,backgroundColor:"#d1d5db",borderRadius:4}});
-      new Chart(document.getElementById(cid),{{type:'bar',data:{{labels:LABELS,datasets}},options:opts}});
+      ]}},options:opts}});
     }});
     </script>
     """
-    st.components.v1.html(chart_html, height=1280, scrolling=False)
+    st.components.v1.html(chart_html, height=980, scrolling=False)
