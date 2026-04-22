@@ -359,13 +359,12 @@ with tab1:
       ["c6",{cpl_ty},{cpl_ly},"#534AB7","#AFA9EC"],
       ["c7",{cpa_ty},{cpa_ly},"#534AB7","#AFA9EC"],
     ];
-    CHARTS.forEach(([cid,tyD,lyD,tyC,lyC],i)=>{{
-      const r=isRoi[i];
+    CHARTS.forEach(([cid,tyD,lyD,tyC,lyC])=>{{
       const opts={{responsive:true,maintainAspectRatio:false,
         plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:ctx=>' '+ctx.parsed.y.toLocaleString()}}}}}},
         scales:{{
           x:{{ticks:{{font:{{size:10}},autoSkip:false,maxRotation:30}},grid:{{display:false}}}},
-          y:{{min:0,ticks:{{font:{{size:10}},callback:r?(v=>v+'%'):(v=>v.toLocaleString())}},grid:{{color:"#f3f4f6"}}}}
+          y:{{min:0,ticks:{{font:{{size:10}},callback:v=>v.toLocaleString()}},grid:{{color:"#f3f4f6"}}}}
         }}
       }};
       new Chart(document.getElementById(cid),{{type:'bar',data:{{labels:LABELS,datasets:[
