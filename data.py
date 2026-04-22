@@ -13,16 +13,24 @@ CAMPAIGNS_BASE = {
 }
 
 def get_campaigns():
-    """Load all campaigns from Tab1_KPI sheet dynamically."""
+    """Load only active campaigns (non-zero TY Cost or TY Leads) from Tab1_KPI sheet."""
     try:
         import pandas as pd
         df = pd.read_excel(_excel_path(), sheet_name="Tab1_KPI", header=4)
         campaigns = {}
         for _, row in df.iterrows():
             name = str(row.iloc[0]).strip()
-            if name and name not in ["nan", "Yellow=TY"]:
-                key = name.lower().replace(" ", "_").replace("-","_").replace(".","").replace("(","").replace(")","")[:30]
-                campaigns[key] = name
+            if not name or name in ["nan", "Yellow=TY"]:
+                continue
+            # Check if campaign has any data — TY Cost (col 2) or TY Leads (col 5)
+            try:
+                ty_cost  = float(row.iloc[2]) if row.iloc[2] else 0
+                ty_leads = float(row.iloc[5]) if row.iloc[5] else 0
+            except:
+                ty_cost, ty_leads = 0, 0
+            # Always include "All campaigns", skip others with no data
+            if name == "All campaigns" or ty_cost > 0 or ty_leads > 0:
+                campaigns[name] = name
         return campaigns if campaigns else CAMPAIGNS_BASE
     except:
         return CAMPAIGNS_BASE
@@ -140,14 +148,21 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
     def sv(r, f): return _sv(r.get(f, 0))
 
     r = get_row(campaign)
-    ty = dict(conversions=int(sv(r,"ty_conv")), cost=sv(r,"ty_cost"),
-              leads=int(sv(r,"ty_leads")), appointments=int(sv(r,"ty_apt")),
-              customers=int(sv(r,"ty_cust")), cost_per_lead=sv(r,"ty_cpl"),
-              cost_per_appointment=sv(r,"ty_cpa"), roi=sv(r,"ty_roi"))
-    ly = dict(conversions=int(sv(r,"ly_conv")), cost=sv(r,"ly_cost"),
-              leads=int(sv(r,"ly_leads")), appointments=int(sv(r,"ly_apt")),
-              customers=int(sv(r,"ly_cust")), cost_per_lead=sv(r,"ly_cpl"),
-              cost_per_appointment=sv(r,"ly_cpa"), roi=sv(r,"ly_roi"))
+    def safe_int(v):
+        try: return max(0, int(float(v))) if v==v else 0
+        except: return 0
+    def safe_float(v):
+        try: return float(v) if v==v else 0.0
+        except: return 0.0
+
+    ty = dict(conversions=safe_int(sv(r,"ty_conv")), cost=safe_float(sv(r,"ty_cost")),
+              leads=safe_int(sv(r,"ty_leads")), appointments=safe_int(sv(r,"ty_apt")),
+              customers=safe_int(sv(r,"ty_cust")), cost_per_lead=safe_float(sv(r,"ty_cpl")),
+              cost_per_appointment=safe_float(sv(r,"ty_cpa")), roi=safe_float(sv(r,"ty_roi")))
+    ly = dict(conversions=safe_int(sv(r,"ly_conv")), cost=safe_float(sv(r,"ly_cost")),
+              leads=safe_int(sv(r,"ly_leads")), appointments=safe_int(sv(r,"ly_apt")),
+              customers=safe_int(sv(r,"ly_cust")), cost_per_lead=safe_float(sv(r,"ly_cpl")),
+              cost_per_appointment=safe_float(sv(r,"ly_cpa")), roi=safe_float(sv(r,"ly_roi")))
 
     # Bar chart series (all campaigns)
     def series(ty_field, ly_field):
