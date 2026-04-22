@@ -163,15 +163,6 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
     conv_ty,  conv_ly    = series("ty_conv", "ly_conv")
     cost_ty,  cost_ly    = series("ty_cost", "ly_cost")
 
-    import math
-    days = max((end_date - start_date).days + 1, 1)
-    def daily(total):
-        base = total / days
-        return [max(0, round(base*(0.7+0.6*math.sin(i/days*math.pi)))) for i in range(days)]
-
-    ty_daily = {f: daily(ty[f]) for f in ty}
-    ly_daily = {f: daily(ly[f]) for f in ly}
-
     return dict(
         ty=ty, ly=ly,
         ty_trend=dict(conversions=conv_ty, cost=cost_ty, leads=leads_ty,
@@ -180,8 +171,7 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
         ly_trend=dict(conversions=conv_ly, cost=cost_ly, leads=leads_ly,
                       appointments=apt_ly, customers=cust_ly,
                       cost_per_lead=cpl_ly, cost_per_appointment=cpa_ly, roi=roi_ly),
-        ty_daily=ty_daily,
-        ly_daily=ly_daily,
+        ty_daily={}, ly_daily={},
     )
 
 
