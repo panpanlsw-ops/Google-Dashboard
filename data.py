@@ -7,13 +7,27 @@ from datetime import date
 import os
 import pandas as pd
 
-CAMPAIGNS = {
-    "all":     "All campaigns",
-    "brand":   "Brand",
-    "search":  "Search",
-    "display": "Display",
-    "local":   "Local",
+# Base campaigns — will be extended dynamically from Excel
+CAMPAIGNS_BASE = {
+    "all": "All campaigns",
 }
+
+def get_campaigns():
+    """Load all campaigns from Tab1_KPI sheet dynamically."""
+    try:
+        import pandas as pd
+        df = pd.read_excel(_excel_path(), sheet_name="Tab1_KPI", header=4)
+        campaigns = {}
+        for _, row in df.iterrows():
+            name = str(row.iloc[0]).strip()
+            if name and name not in ["nan", "Yellow=TY"]:
+                key = name.lower().replace(" ", "_").replace("-","_").replace(".","").replace("(","").replace(")","")[:30]
+                campaigns[key] = name
+        return campaigns if campaigns else CAMPAIGNS_BASE
+    except:
+        return CAMPAIGNS_BASE
+
+CAMPAIGNS = CAMPAIGNS_BASE  # will be overridden at runtime
 
 def _excel_path():
     base = os.path.dirname(os.path.abspath(__file__))
@@ -49,16 +63,11 @@ def get_data(campaign: str) -> dict:
     ]
     df = df.dropna(subset=["campaign"])
 
-    # Map campaign key to row name
-    camp_map = {
-        "all":     "All campaigns",
-        "brand":   "Brand",
-        "search":  "Search",
-        "display": "Display",
-        "local":   "Local",
-    }
-    camp_name = camp_map.get(campaign, "All campaigns")
-    rows = df[df["campaign"].astype(str).str.strip() == camp_name]
+    # Match campaign by name directly (campaign param is the full name or key)
+    rows = df[df["campaign"].astype(str).str.strip() == campaign]
+    if rows.empty:
+        # Try partial match
+        rows = df[df["campaign"].astype(str).str.contains(campaign[:15], case=False, na=False)]
     if rows.empty:
         rows = df[df["campaign"].astype(str).str.contains("All", case=False, na=False)]
     if rows.empty:
@@ -118,13 +127,13 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
     ]
     df = df.dropna(subset=["campaign"])
 
-    camp_map = {"all":"All campaigns","brand":"Brand","search":"Search","display":"Display","local":"Local"}
     camp_keys = list(CAMPAIGNS.keys())
     camp_names = list(CAMPAIGNS.values())
 
     def get_row(key):
-        name = camp_map.get(key, "All campaigns")
-        rows = df[df["campaign"].astype(str).str.strip() == name]
+        rows = df[df["campaign"].astype(str).str.strip() == key]
+        if rows.empty:
+            rows = df[df["campaign"].astype(str).str.contains(key[:15] if len(key)>3 else "All", case=False, na=False)]
         if rows.empty: rows = df.head(1)
         return rows.iloc[0]
 
@@ -180,9 +189,11 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
 def get_regional_data(start_date: date, end_date: date) -> list:
     df = pd.read_excel(_excel_path(), sheet_name="Tab2_Regional", header=3)
     df = df.rename(columns={
-        df.columns[0]:"name", df.columns[1]:"ul", df.columns[2]:"nl",
-        df.columns[3]:"apt",  df.columns[4]:"quote", df.columns[5]:"cust",
-        df.columns[6]:"sales",df.columns[7]:"nlc",   df.columns[8]:"nl_sales",
+        df.columns[0]:"name",     df.columns[1]:"ul",      df.columns[2]:"nl",
+        df.columns[3]:"apt",      df.columns[4]:"quote",   df.columns[5]:"cust",
+        df.columns[6]:"sales",    df.columns[7]:"nlc",     df.columns[8]:"nl_sales",
+        df.columns[9]:"leads_pct",df.columns[10]:"sales_pct",
+        df.columns[11]:"apt_leads",df.columns[12]:"order_apt",df.columns[13]:"order_leads",
     })
     df = df.dropna(subset=["name"])
     df = df[~df["name"].astype(str).str.contains("row|update|office|regional", case=False, na=False)]
@@ -191,10 +202,15 @@ def get_regional_data(start_date: date, end_date: date) -> list:
     for _, row in df.iterrows():
         result.append(dict(
             name=str(row["name"]),
-            ul=int(_sv(row.get("ul",0))),    nl=int(_sv(row.get("nl",0))),
-            apt=int(_sv(row.get("apt",0))),  quote=int(_sv(row.get("quote",0))),
-            cust=int(_sv(row.get("cust",0))),sales=_sv(row.get("sales",0)),
-            nlc=int(_sv(row.get("nlc",0))),  nl_sales=_sv(row.get("nl_sales",0)),
+            ul=int(_sv(row.get("ul",0))),       nl=int(_sv(row.get("nl",0))),
+            apt=int(_sv(row.get("apt",0))),     quote=int(_sv(row.get("quote",0))),
+            cust=int(_sv(row.get("cust",0))),   sales=_sv(row.get("sales",0)),
+            nlc=int(_sv(row.get("nlc",0))),     nl_sales=_sv(row.get("nl_sales",0)),
+            leads_pct=str(row.get("leads_pct","0%")),
+            sales_pct=str(row.get("sales_pct","0%")),
+            apt_leads=str(row.get("apt_leads","0%")),
+            order_apt=str(row.get("order_apt","0%")),
+            order_leads=str(row.get("order_leads","0%")),
         ))
     return result
 

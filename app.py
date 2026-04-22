@@ -2,9 +2,15 @@
 import streamlit as st
 from datetime import date, timedelta
 import calendar
-from data import get_data, get_roi_data, get_regional_data, get_campaign_data, CAMPAIGNS
+from data import get_data, get_roi_data, get_regional_data, get_campaign_data, get_campaigns
 
 st.set_page_config(page_title="Daily Report", page_icon="📊", layout="wide")
+
+# Load campaigns dynamically from Excel
+try:
+    CAMPAIGNS = get_campaigns()
+except:
+    CAMPAIGNS = {"all": "All campaigns"}
 
 st.markdown("""
 <style>
@@ -91,7 +97,9 @@ tab1, tab2, tab3 = st.tabs(["📈 Today", "🏢 Regional Offices", "📊 Campaig
 # TAB 1 — Daily KPIs + ROI Charts
 # ══════════════════════════════════════════════════════════════════════════════
 with tab1:
-    campaign = st.selectbox("Campaign", options=list(CAMPAIGNS.keys()), format_func=lambda x: CAMPAIGNS[x])
+    camp_options = list(CAMPAIGNS.values())
+    selected_camp = st.selectbox("Campaign", options=camp_options)
+    campaign = selected_camp  # use full name directly
 
     try:
         d = get_data(campaign)
@@ -387,7 +395,7 @@ with tab1:
         plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:ctx=>r?' '+ctx.parsed.y+'%':' '+ctx.parsed.y.toLocaleString()}}}}}},
         scales:{{
           x:{{ticks:{{font:{{size:10}},autoSkip:false,maxRotation:30}},grid:{{display:false}}}},
-          y:{{ticks:{{font:{{size:10}},callback:r?(v=>v+'%'):(v=>v.toLocaleString())}},grid:{{color:"#f3f4f6"}}}}
+          y:{{min:0,ticks:{{font:{{size:10}},callback:r?(v=>v+'%'):(v=>v.toLocaleString())}},grid:{{color:"#f3f4f6"}}}}
         }}
       }};
       new Chart(document.getElementById(cid),{{type:'bar',data:{{labels:LABELS,datasets:[
@@ -440,42 +448,52 @@ with tab2:
     pie_sales = []
 
     for i, o in enumerate(offices):
-        def sf(v):
-            try:
-                f = float(v)
-                return 0.0 if (f != f) else f
-            except:
-                return 0.0
-        lp  = sf(o["nl"])    / sf(total_nl)    * 100 if sf(total_nl)    else 0
-        sp  = sf(o["sales"]) / sf(total_sales) * 100 if sf(total_sales) else 0
-        al  = sf(o["apt"])   / sf(o["nl"])     * 100 if sf(o["nl"])     else 0
-        oa  = sf(o["cust"])  / sf(o["apt"])    * 100 if sf(o["apt"])    else None
-        ol  = sf(o["cust"])  / sf(o["nl"])     * 100 if sf(o["nl"])     else 0
+        # Read % values directly from Excel — no calculation
+        lp_str = str(o.get("leads_pct","0%"))
+        sp_str = str(o.get("sales_pct","0%"))
+        al_str = str(o.get("apt_leads","0%"))
+        oa_str = str(o.get("order_apt","0%"))
+        ol_str = str(o.get("order_leads","0%"))
+
+        # For pie chart use numeric value
+        try: lp_num = float(lp_str.replace("%",""))
+        except: lp_num = 0
+        try: sp_num = float(sp_str.replace("%",""))
+        except: sp_num = 0
+
         pie_names.append(o["name"])
-        pie_leads.append(round(lp, 1))
-        pie_sales.append(round(sp, 1))
-        bar_w_l = min(int(lp / 20 * 100), 100) if lp == lp else 0
-        bar_w_s = min(int(sp / 25 * 100), 100) if sp == sp else 0
-        lp_badge = f'<span style="font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px;background:#d1fae5;color:#065f46;">{lp:.2f}%</span>' if lp >= 10 else f'<span style="font-size:11px;color:#374151;">{lp:.2f}%</span>'
-        sp_badge = f'<span style="font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px;background:#d1fae5;color:#065f46;">{sp:.2f}%</span>' if sp >= 10 else f'<span style="font-size:11px;color:#374151;">{sp:.2f}%</span>'
-        al_badge = f'<span style="font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px;background:#dbeafe;color:#1e40af;">{al:.2f}%</span>' if al >= 50 else f'<span style="font-size:11px;color:#374151;">{al:.2f}%</span>'
-        bar_l = f'<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;"><div style="width:60px;height:6px;background:#f3f4f6;border-radius:3px;overflow:hidden;"><div style="width:{bar_w_l}%;height:100%;background:#378ADD;border-radius:3px;"></div></div>{lp_badge}</div>'
-        bar_s = f'<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;"><div style="width:60px;height:6px;background:#f3f4f6;border-radius:3px;overflow:hidden;"><div style="width:{bar_w_s}%;height:100%;background:#1D9E75;border-radius:3px;"></div></div>{sp_badge}</div>'
+        pie_leads.append(round(lp_num, 1))
+        pie_sales.append(round(sp_num, 1))
+
+        # Color badges based on value
+        def pct_badge(val_str, threshold, color):
+            try:
+                v = float(val_str.replace("%",""))
+                if v >= threshold:
+                    return f'<span style="font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px;background:{color[0]};color:{color[1]};">{val_str}</span>'
+            except: pass
+            return f'<span style="font-size:11px;color:#374151;">{val_str}</span>'
+
+        lp_badge = pct_badge(lp_str, 10, ("#d1fae5","#065f46"))
+        sp_badge = pct_badge(sp_str, 10, ("#d1fae5","#065f46"))
+        al_badge = pct_badge(al_str, 50, ("#dbeafe","#1e40af"))
+
+        td = "text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#374151;"
         rows_html += f"""<tr>
-          <td style="text-align:left;font-weight:500;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#111827;">{o['name']}</td>
-          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#374151;">{o['ul']}</td>
-          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#374151;">{o['nl']}</td>
-          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#374151;">{o['apt']}</td>
-          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#374151;">{o['quote']}</td>
-          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#374151;">{o['cust']}</td>
-          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#374151;">{money(o['sales'])}</td>
-          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#374151;">{o['nlc']}</td>
-          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#374151;">{money(o['nl_sales'])}</td>
-          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{bar_l}</td>
-          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{bar_s}</td>
+          <td style="text-align:left;font-weight:500;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#111827;">{o["name"]}</td>
+          <td style="{td}">{o["ul"]}</td>
+          <td style="{td}">{o["nl"]}</td>
+          <td style="{td}">{o["apt"]}</td>
+          <td style="{td}">{o["quote"]}</td>
+          <td style="{td}">{o["cust"]}</td>
+          <td style="{td}">{money(o["sales"])}</td>
+          <td style="{td}">{o["nlc"]}</td>
+          <td style="{td}">{money(o["nl_sales"])}</td>
+          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{lp_badge}</td>
+          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{sp_badge}</td>
           <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{al_badge}</td>
-          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#374151;">{f"{oa:.2f}%" if oa is not None else "#DIV/0!"}</td>
-          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#374151;">{ol:.2f}%</td>
+          <td style="{td}">{oa_str}</td>
+          <td style="{td}">{ol_str}</td>
         </tr>"""
 
     th = "padding:9px 10px;font-size:11px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase;white-space:nowrap;"
