@@ -186,37 +186,9 @@ with tab1:
     cust_ty,  cust_ly  = series("customers")
     cpl_ty,   cpl_ly   = series("cost_per_lead")
     cpa_ty,   cpa_ly   = series("cost_per_appointment")
-    roi_ty,   roi_ly   = series("roi")
-
-    # ── MTD Charts ────────────────────────────────────────────────────────────
-    is_all = (campaign == "All campaigns")
-    camp_keys  = list(CAMPAIGNS.values())
-    camp_names = list(CAMPAIGNS.values())
-
-    if is_all:
-        # Bar charts: all campaigns side by side
-        def get_series(field_ty, field_ly):
-            ty_vals, ly_vals = [], []
-            for name in camp_keys:
-                r = get_roi_data(name, roi_start, roi_end)
-                ty_vals.append(r["ty"].get(field_ty, 0))
-                ly_vals.append(r["ly"].get(field_ly, 0))
-            return ty_vals, ly_vals
-        labels = camp_names
-    else:
-        # Single campaign: show TY vs LY as 2 bars only
-        def get_series(field_ty, field_ly):
-            r = get_roi_data(campaign, roi_start, roi_end)
-            return [r["ty"].get(field_ty, 0)], [r["ly"].get(field_ly, 0)]
-        labels = [campaign]
-
-    conv_ty,  conv_ly  = get_series("conversions",         "conversions")
-    cost_ty,  cost_ly  = get_series("cost",                "cost")
-    leads_ty, leads_ly = get_series("leads",               "leads")
-    apt_ty,   apt_ly   = get_series("appointments",        "appointments")
-    cust_ty,  cust_ly  = get_series("customers",           "customers")
-    cpl_ty,   cpl_ly   = get_series("cost_per_lead",       "cost_per_lead")
-    cpa_ty,   cpa_ly   = get_series("cost_per_appointment","cost_per_appointment")
+    # (roi not used in charts)
+    all_camp_names = list(CAMPAIGNS.values())
+    apt_ty,  apt_ly  = appts_ty, appts_ly
 
     # ── Gauge data for Leads and Appointments ────────────────────────────────
     g_leads_ty   = d.get("leads", 0)
