@@ -165,17 +165,19 @@ with tab1:
     chart_type = "bar" if is_all else "line"
 
     if is_all:
-        labels    = list(CAMPAIGNS.values())
-        camp_keys = list(CAMPAIGNS.keys())
+        labels     = list(CAMPAIGNS.values())
+        camp_names = list(CAMPAIGNS.values())
         def series(field):
-            ty = [get_roi_data(name, roi_start, roi_end)["ty"][field] for name in camp_keys]
-            ly = [get_roi_data(name, roi_start, roi_end)["ly"][field] for name in camp_keys]
+            ty = [get_roi_data(name, roi_start, roi_end)["ty"].get(field, 0) for name in camp_names]
+            ly = [get_roi_data(name, roi_start, roi_end)["ly"].get(field, 0) for name in camp_names]
             return ty, ly
     else:
-        # Daily labels: Apr 1, Apr 2 ... Apr (yesterday)
-        labels = [f"{month_name} {d}" for d in range(1, yesterday.day + 1)]
+        # Single campaign: TY vs LY as 2 bars
+        labels = [campaign]
         def series(field):
-            return roi["ty_daily"][field], roi["ly_daily"][field]
+            ty = [roi["ty"].get(field, 0)]
+            ly = [roi["ly"].get(field, 0)]
+            return ty, ly
 
     conv_ty,  conv_ly  = series("conversions")
     cost_ty,  cost_ly  = series("cost")
