@@ -217,7 +217,6 @@ with tab1:
     cust_ty,  cust_ly  = get_series("customers",           "customers")
     cpl_ty,   cpl_ly   = get_series("cost_per_lead",       "cost_per_lead")
     cpa_ty,   cpa_ly   = get_series("cost_per_appointment","cost_per_appointment")
-    roi_ty,   roi_ly   = get_series("roi",                 "roi")
 
     # ── Gauge data for Leads and Appointments ────────────────────────────────
     g_leads_ty   = d.get("leads", 0)
@@ -355,7 +354,6 @@ with tab1:
     cust_ty,  cust_ly  = get_series("customers",           "customers")
     cpl_ty,   cpl_ly   = get_series("cost_per_lead",       "cost_per_lead")
     cpa_ty,   cpa_ly   = get_series("cost_per_appointment","cost_per_appointment")
-    roi_ty,   roi_ly   = get_series("roi",                 "roi")
 
     chart_html = f"""
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
@@ -373,15 +371,13 @@ with tab1:
             ("Appointments","c4","#1D9E75","#9FE1CB",""),
             ("Customers","c5","#1D9E75","#9FE1CB",""),
             ("Cost per Lead","c6","#534AB7","#AFA9EC",""),
-            ("Cost per Appointment","c7","#534AB7","#AFA9EC",""),
-            ("ROI %","c8","#BA7517","#FAC775","grid-column:span 2;"),
+            ("Cost per Appointment","c7","#534AB7","#AFA9EC","grid-column:span 2;"),
         ]
       ])}
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script>
     const LABELS={labels};
-    const isRoi=[false,false,false,false,false,false,false,true];
     const CHARTS=[
       ["c1",{conv_ty},{conv_ly},"#378ADD","#B5D4F4"],
       ["c2",{cost_ty},{cost_ly},"#378ADD","#B5D4F4"],
@@ -390,12 +386,11 @@ with tab1:
       ["c5",{cust_ty},{cust_ly},"#1D9E75","#9FE1CB"],
       ["c6",{cpl_ty},{cpl_ly},"#534AB7","#AFA9EC"],
       ["c7",{cpa_ty},{cpa_ly},"#534AB7","#AFA9EC"],
-      ["c8",{roi_ty},{roi_ly},"#BA7517","#FAC775"],
     ];
     CHARTS.forEach(([cid,tyD,lyD,tyC,lyC],i)=>{{
       const r=isRoi[i];
       const opts={{responsive:true,maintainAspectRatio:false,
-        plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:ctx=>r?' '+ctx.parsed.y+'%':' '+ctx.parsed.y.toLocaleString()}}}}}},
+        plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:ctx=>' '+ctx.parsed.y.toLocaleString()}}}}}},
         scales:{{
           x:{{ticks:{{font:{{size:10}},autoSkip:false,maxRotation:30}},grid:{{display:false}}}},
           y:{{min:0,ticks:{{font:{{size:10}},callback:r?(v=>v+'%'):(v=>v.toLocaleString())}},grid:{{color:"#f3f4f6"}}}}
@@ -408,7 +403,7 @@ with tab1:
     }});
     </script>
     """
-    st.components.v1.html(chart_html, height=1300, scrolling=True)
+    st.components.v1.html(chart_html, height=1150, scrolling=False)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
