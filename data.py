@@ -178,13 +178,24 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
 # ── Tab 2: Regional Offices ───────────────────────────────────────────────────
 def get_regional_data(start_date: date, end_date: date) -> list:
     df = pd.read_excel(_excel_path(), sheet_name="Tab2_Regional", header=3)
-    df = df.rename(columns={
-        df.columns[0]:"name",     df.columns[1]:"ul",      df.columns[2]:"nl",
-        df.columns[3]:"apt",      df.columns[4]:"quote",   df.columns[5]:"cust",
-        df.columns[6]:"sales",    df.columns[7]:"nlc",     df.columns[8]:"nl_sales",
-        df.columns[9]:"leads_pct",df.columns[10]:"sales_pct",
-        df.columns[11]:"apt_leads",df.columns[12]:"order_apt",df.columns[13]:"order_leads",
-    })
+    # Rename using actual column names
+    col_map = {
+        "Regional Office":    "name",
+        "Unique Leads":       "ul",
+        "New Leads":          "nl",
+        "Apt":                "apt",
+        "Quote":              "quote",
+        "Customers":          "cust",
+        "Sales Amount":       "sales",
+        "NL Customers":       "nlc",
+        "NL Sales":           "nl_sales",
+        "% of Total":         "leads_pct",
+        "$ Sales % of Total": "sales_pct",
+        "Apt/Leads":          "apt_leads",
+        "Order/Apt":          "order_apt",
+        "Order/Leads":        "order_leads",
+    }
+    df = df.rename(columns={c: col_map[c] for c in df.columns if c in col_map})
     df = df.dropna(subset=["name"])
     df = df[~df["name"].astype(str).str.contains("row|update|office|regional", case=False, na=False)]
 
@@ -208,12 +219,13 @@ def get_regional_data(start_date: date, end_date: date) -> list:
 # ── Tab 3: Campaign Performance ───────────────────────────────────────────────
 def get_campaign_data() -> list:
     df = pd.read_excel(_excel_path(), sheet_name="Tab3_Campaign", header=3)
-    df = df.rename(columns={
-        df.columns[0]:"campaign", df.columns[1]:"year",  df.columns[2]:"month",
-        df.columns[3]:"clicks",   df.columns[4]:"cost",  df.columns[5]:"conv",
-        df.columns[6]:"leads",    df.columns[7]:"apt",   df.columns[8]:"cust",
-        df.columns[9]:"sales",    df.columns[10]:"roi",
-    })
+    col_map3 = {
+        "Campaign":"campaign","Year":"year","Month":"month",
+        "Clicks":"clicks","Cost":"cost","Conversions":"conv",
+        "Leads":"leads","Appointments":"apt","Customers":"cust",
+        "Sales":"sales","ROI %":"roi",
+    }
+    df = df.rename(columns={c: col_map3[c] for c in df.columns if c in col_map3})
     df = df.dropna(subset=["campaign"])
     df = df[~df["campaign"].astype(str).str.contains("campaign|row|update", case=False, na=False)]
 
