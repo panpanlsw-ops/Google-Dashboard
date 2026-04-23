@@ -392,7 +392,7 @@ with tab2:
     total_nls   = sum(o["nl_sales"] for o in offices)
 
     r1, r2, r3, r4, r5 = st.columns(5)
-    with r1: metric_card("Total Leads",  f"{total_nl:,}",                    "blue")
+    with r1: metric_card("Total Leads",  f"{total_ul:,}",                    "blue")
     with r2: metric_card("Appointments", f"{total_apt:,}",                   "blue")
     with r3: metric_card("Customers",    f"{total_cust:,}",                  "teal")
     with r4: metric_card("Total Sales",  f"${float(total_sales or 0):,.0f}", "teal")
@@ -448,6 +448,17 @@ with tab2:
         al_badge = pct_badge(al_str, 50, ("#dbeafe","#1e40af"))
 
         td = "text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#374151;"
+
+        # Color bars for % columns
+        try: lp_num = float(lp_str.replace("%","").strip())
+        except: lp_num = 0
+        try: sp_num = float(sp_str.replace("%","").strip())
+        except: sp_num = 0
+        bar_w_l = min(int(lp_num / 20 * 100), 100)
+        bar_w_s = min(int(sp_num / 25 * 100), 100)
+        bar_l = f'<div style="display:flex;align-items:center;gap:5px;justify-content:flex-end;"><div style="width:50px;height:5px;background:#f3f4f6;border-radius:3px;overflow:hidden;"><div style="width:{bar_w_l}%;height:100%;background:#378ADD;border-radius:3px;"></div></div>{lp_badge}</div>'
+        bar_s = f'<div style="display:flex;align-items:center;gap:5px;justify-content:flex-end;"><div style="width:50px;height:5px;background:#f3f4f6;border-radius:3px;overflow:hidden;"><div style="width:{bar_w_s}%;height:100%;background:#1D9E75;border-radius:3px;"></div></div>{sp_badge}</div>'
+
         rows_html += f"""<tr>
           <td style="text-align:left;font-weight:500;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#111827;">{o["name"]}</td>
           <td style="{td}">{o["ul"]}</td>
@@ -458,8 +469,8 @@ with tab2:
           <td style="{td}">{money(o["sales"])}</td>
           <td style="{td}">{o["nlc"]}</td>
           <td style="{td}">{money(o["nl_sales"])}</td>
-          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{lp_badge}</td>
-          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{sp_badge}</td>
+          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{bar_l}</td>
+          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{bar_s}</td>
           <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{al_badge}</td>
           <td style="{td}">{oa_str}</td>
           <td style="{td}">{ol_str}</td>
