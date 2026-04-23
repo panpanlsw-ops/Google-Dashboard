@@ -88,8 +88,8 @@ def get_data(campaign: str) -> dict:
         conversions  = int(sv("ty_conv")),
         cost         = sv("ty_cost"),
         budget       = sv("bud_cost"),
-        invoca       = int(sv("ty_conv_invoca")),
-        form         = int(sv("ty_conv_form")),
+        invoca       = int(sv("ty_conv_invoca")),  # Google conv Invoca
+        form         = int(sv("ty_conv_form")),     # Google conv Form
         leads        = int(sv("ty_leads")),
         crm_invoca   = int(sv("ty_crm_invoca")),
         crm_form     = int(sv("ty_crm_form")),

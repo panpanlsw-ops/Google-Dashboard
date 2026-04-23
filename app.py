@@ -122,7 +122,7 @@ with tab1:
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
         metric_card("Conversions", f"{d['conversions']:,}", "blue",
-            f"Invoca {d['crm_invoca']:,} · Form {d['crm_form']:,}",
+            f"Invoca {d['invoca']:,} · Form {d['form']:,}",
             f"{projected(d['conversions'], day_of_month, days_in_month):,}", days_left,
             ly_mtd=f"{ly.get('conversions',0):,}", ly_full=f"{lyf.get('conversions',0):,}")
     with c2:
@@ -648,7 +648,7 @@ with tab3:
       </table></div>
       <div class="cbox">
         <div class="ctop">
-          <div><div class="cname" id="t3cname">Select a campaign above</div><div class="chint" id="t3chint"></div></div>
+          <div><div class="cname" id="t3cname">Select a campaign above to see trend</div><div class="chint" id="t3chint"></div></div>
           <div class="leg">
             <span class="legi"><span class="legd" style="background:#378ADD"></span><span id="t3lty">This period</span></span>
             <span class="legi"><span class="legd" style="background:#B5D4F4"></span><span id="t3lly">Last period</span></span>
@@ -695,9 +695,23 @@ with tab3:
       document.getElementById('t3foot').innerHTML='<tr><td>Total</td><td>'+tot.cl.toLocaleString()+'</td><td>'+mn(tot.co)+'</td><td>'+tot.cv+'</td><td>—</td><td>'+tot.le+'</td><td>'+tot.ap+'</td><td>'+tot.cu+'</td><td>'+mn(tot.sa)+'</td><td>'+rb(ar)+'</td><td>'+pb(tot.le>0?tot.ap/tot.le*100:0,30)+'</td><td>'+pb(tot.ap>0?tot.cu/tot.ap*100:0,15)+'</td></tr>';
       t3UC();
     }
-    function t3Select(row,idx){document.querySelectorAll('#t3body tr.data-row').forEach(function(r){r.classList.remove('sel');});row.classList.add('sel');ci=idx;document.getElementById('t3cname').textContent=TD[idx].name+' — Monthly Trend';t3UC();}
+    function t3Select(row,idx){
+      if(row.classList.contains('sel')){
+        row.classList.remove('sel');
+        ci=-1;
+        document.getElementById('t3cname').textContent='Select a campaign above to see trend';
+        document.getElementById('t3chint').textContent='';
+        if(tc){tc.destroy();tc=null;}
+        return;
+      }
+      document.querySelectorAll('#t3body tr.data-row').forEach(function(r){r.classList.remove('sel');});
+      row.classList.add('sel');ci=idx;
+      document.getElementById('t3cname').textContent=TD[idx].name+' — Monthly Trend';
+      t3UC();
+    }
     function t3SM(m,btn){cm=m;document.querySelectorAll('.mtab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');t3UC();}
     function t3UC(){
+      if(ci<0)return;
       var isR=cm==='roi';var months=getMonths(fm,fy,tm,ty);var ly=months.map(function(p){return{m:p.m,y:p.y-1};});
       var labels=months.map(function(p){return MN[p.m]+' '+p.y;});
       var tyd=months.map(function(p){return(TD[ci]&&TD[ci].trend&&TD[ci].trend[p.y]&&TD[ci].trend[p.y][cm]&&TD[ci].trend[p.y][cm][p.m])||0;});
