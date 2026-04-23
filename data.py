@@ -1,5 +1,6 @@
 # data.py v3.0
 # Reads all data from dashboard_data.xlsx
+import streamlit as st
 # Tab1_KPI: one row per campaign (All, Brand, Search, Display, Local)
 # Tab2_Regional: one row per regional office
 # Tab3_Campaign: one row per campaign per month
@@ -12,6 +13,7 @@ CAMPAIGNS_BASE = {
     "all": "All campaigns",
 }
 
+@st.cache_data(ttl=300)
 def get_campaigns():
     """Load only active campaigns (non-zero TY Cost or TY Leads) from Tab1_KPI sheet."""
     try:
@@ -50,6 +52,7 @@ def _sv(val):
 
 
 # ── Tab 1: KPI Cards ──────────────────────────────────────────────────────────
+@st.cache_data(ttl=300)
 def get_data(campaign: str) -> dict:
     """
     Reads KPI numbers from Tab1_KPI sheet.
@@ -118,6 +121,7 @@ def get_data(campaign: str) -> dict:
 
 
 # ── Tab 1: ROI Charts ─────────────────────────────────────────────────────────
+@st.cache_data(ttl=300)
 def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
     """Reads MTD comparison from Tab1_KPI, monthly trend from Tab3_Campaign."""
     df = pd.read_excel(_excel_path(), sheet_name="Tab1_KPI", header=4)
@@ -191,6 +195,7 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
 
 
 # ── Tab 2: Regional Offices ───────────────────────────────────────────────────
+@st.cache_data(ttl=300)
 def get_regional_data(start_date: date, end_date: date) -> list:
     df = pd.read_excel(_excel_path(), sheet_name="Tab2_Regional", header=3)
     # Rename using actual column names
@@ -232,6 +237,7 @@ def get_regional_data(start_date: date, end_date: date) -> list:
 
 
 # ── Tab 3: Campaign Performance ───────────────────────────────────────────────
+@st.cache_data(ttl=300)
 def get_campaign_data() -> list:
     df = pd.read_excel(_excel_path(), sheet_name="Tab3_Campaign", header=3)
     col_map3 = {

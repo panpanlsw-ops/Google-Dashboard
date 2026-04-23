@@ -25,7 +25,7 @@ st.markdown("""
     .pace-row { font-size:10px; color:#185FA5; margin-top:6px; padding-top:6px; border-top:0.5px solid #e5e7eb; }
     .pace-projected { font-weight:600; }
     .badge-row { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
-    .badge { font-size:10px; padding:2px 7px; border-radius:20px; font-weight:500; white-space:nowrap; }
+    .badge { font-size:12px; padding:3px 9px; border-radius:20px; font-weight:600; white-space:nowrap; }
     .badge-mtd { background:#EFF6FF; color:#1e40af; }
     .badge-full { background:#F0FDF4; color:#166534; }
     .badge-budget { background:#FDF4FF; color:#6b21a8; }
@@ -191,10 +191,10 @@ with tab1:
             if leads_down:
                 items = "".join([
                     f'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid #f3f4f6;">' +
-                    f'<span style="font-size:12px;color:#374151;font-weight:500;">{name}</span>' +
-                    f'<span style="font-size:11px;"><span style="color:#1D9E75;font-weight:600;">{ty}</span>' +
-                    f'<span style="color:#9ca3af;"> vs </span><span style="color:#6b7280;">{ly}</span>' +
-                    f'<span style="background:#fee2e2;color:#991b1b;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:6px;font-weight:500;">▼{pct}%</span></span></div>'
+                    f'<span style="font-size:14px;color:#111827;font-weight:600;">{name}</span>' +
+                    f'<span style="font-size:13px;"><span style="color:#1D9E75;font-weight:700;">{ty}</span>' +
+                    f'<span style="color:#9ca3af;"> vs </span><span style="color:#6b7280;font-weight:600;">{ly}</span>' +
+                    f'<span style="background:#fee2e2;color:#991b1b;font-size:12px;padding:2px 8px;border-radius:10px;margin-left:8px;font-weight:600;">▼{pct}%</span></span></div>'
                     for name, ty, ly, diff, pct in leads_down
                 ])
                 st.markdown(
@@ -209,10 +209,10 @@ with tab1:
             if apts_down:
                 items = "".join([
                     f'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid #f3f4f6;">' +
-                    f'<span style="font-size:12px;color:#374151;font-weight:500;">{name}</span>' +
-                    f'<span style="font-size:11px;"><span style="color:#1D9E75;font-weight:600;">{ty}</span>' +
-                    f'<span style="color:#9ca3af;"> vs </span><span style="color:#6b7280;">{ly}</span>' +
-                    f'<span style="background:#fee2e2;color:#991b1b;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:6px;font-weight:500;">▼{pct}%</span></span></div>'
+                    f'<span style="font-size:14px;color:#111827;font-weight:600;">{name}</span>' +
+                    f'<span style="font-size:13px;"><span style="color:#1D9E75;font-weight:700;">{ty}</span>' +
+                    f'<span style="color:#9ca3af;"> vs </span><span style="color:#6b7280;font-weight:600;">{ly}</span>' +
+                    f'<span style="background:#fee2e2;color:#991b1b;font-size:12px;padding:2px 8px;border-radius:10px;margin-left:8px;font-weight:600;">▼{pct}%</span></span></div>'
                     for name, ty, ly, diff, pct in apts_down
                 ])
                 st.markdown(
