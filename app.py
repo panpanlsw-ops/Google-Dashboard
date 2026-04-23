@@ -646,9 +646,9 @@ with tab3:
         </tbody>
         <tfoot id="t3foot"></tfoot>
       </table></div>
-      <div class="cbox">
+      <div class="cbox" id="t3cbox">
         <div class="ctop">
-          <div><div class="cname" id="t3cname">Select a campaign above to see trend</div><div class="chint" id="t3chint"></div></div>
+          <div><div class="cname" id="t3cname">All Campaigns — Monthly Trend</div><div class="chint" id="t3chint"></div></div>
           <div class="leg">
             <span class="legi"><span class="legd" style="background:#378ADD"></span><span id="t3lty">This period</span></span>
             <span class="legi"><span class="legd" style="background:#B5D4F4"></span><span id="t3lly">Last period</span></span>
@@ -670,7 +670,7 @@ with tab3:
     <script>
     const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const TD=""" + camp_json + """;
-    var fm=0,fy=2026,tm=3,ty=2026,ci=0,cm='clicks',tc=null;
+    var fm=0,fy=2026,tm=3,ty=2026,ci=-1,cm='clicks',tc=null;
     function getMonths(a,b,c,d){var r=[],mo=a,yr=b;while(yr<d||(yr===d&&mo<=c)){r.push({m:mo,y:yr});mo++;if(mo>11){mo=0;yr++;}}return r;}
     function gv(i,months,f){return months.reduce(function(s,p){return s+((TD[i]&&TD[i].trend&&TD[i].trend[p.y]&&TD[i].trend[p.y][f]&&TD[i].trend[p.y][f][p.m])||0);},0);}
     function gav(i,months){var vl=months.filter(function(p){return((TD[i]&&TD[i].trend&&TD[i].trend[p.y]&&TD[i].trend[p.y].clicks&&TD[i].trend[p.y].clicks[p.m])||0)>0;});if(!vl.length)return 0;return vl.reduce(function(s,p){return s+((TD[i]&&TD[i].trend&&TD[i].trend[p.y]&&TD[i].trend[p.y].roi&&TD[i].trend[p.y].roi[p.m])||0);},0)/vl.length;}
@@ -699,9 +699,9 @@ with tab3:
       if(row.classList.contains('sel')){
         row.classList.remove('sel');
         ci=-1;
-        document.getElementById('t3cname').textContent='Select a campaign above to see trend';
+        document.getElementById('t3cname').textContent='All Campaigns — Monthly Trend';
         document.getElementById('t3chint').textContent='';
-        if(tc){tc.destroy();tc=null;}
+        t3UC();
         return;
       }
       document.querySelectorAll('#t3body tr.data-row').forEach(function(r){r.classList.remove('sel');});
@@ -711,11 +711,17 @@ with tab3:
     }
     function t3SM(m,btn){cm=m;document.querySelectorAll('.mtab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');t3UC();}
     function t3UC(){
-      if(ci<0)return;
       var isR=cm==='roi';var months=getMonths(fm,fy,tm,ty);var ly=months.map(function(p){return{m:p.m,y:p.y-1};});
       var labels=months.map(function(p){return MN[p.m]+' '+p.y;});
-      var tyd=months.map(function(p){return(TD[ci]&&TD[ci].trend&&TD[ci].trend[p.y]&&TD[ci].trend[p.y][cm]&&TD[ci].trend[p.y][cm][p.m])||0;});
-      var lyd=ly.map(function(p){return(TD[ci]&&TD[ci].trend&&TD[ci].trend[p.y]&&TD[ci].trend[p.y][cm]&&TD[ci].trend[p.y][cm][p.m])||0;});
+      var tyd,lyd;
+      if(ci<0){
+        // All campaigns — sum across all
+        tyd=months.map(function(p){return TD.reduce(function(s,c){return s+((c.trend&&c.trend[p.y]&&c.trend[p.y][cm]&&c.trend[p.y][cm][p.m])||0);},0);});
+        lyd=ly.map(function(p){return TD.reduce(function(s,c){return s+((c.trend&&c.trend[p.y]&&c.trend[p.y][cm]&&c.trend[p.y][cm][p.m])||0);},0);});
+      } else {
+        tyd=months.map(function(p){return(TD[ci]&&TD[ci].trend&&TD[ci].trend[p.y]&&TD[ci].trend[p.y][cm]&&TD[ci].trend[p.y][cm][p.m])||0;});
+        lyd=ly.map(function(p){return(TD[ci]&&TD[ci].trend&&TD[ci].trend[p.y]&&TD[ci].trend[p.y][cm]&&TD[ci].trend[p.y][cm][p.m])||0;});
+      }
       var tyy=[...new Set(months.map(function(p){return p.y;}))].join('–');var lyy=[...new Set(ly.map(function(p){return p.y;}))].join('–');
       document.getElementById('t3lty').textContent=tyy;document.getElementById('t3lly').textContent=lyy;
       document.getElementById('t3chint').textContent=MN[fm]+' '+fy+' - '+MN[tm]+' '+ty+'  |  vs same period last year';
