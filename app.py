@@ -486,7 +486,20 @@ with tab2:
     pie_leads = []
     pie_sales = []
 
-    for i, o in enumerate(offices):
+    # Calculate avg apt/leads and order/leads for color coding
+    def to_float(s):
+        try: return float(str(s).replace("%","").strip())
+        except: return 0.0
+
+    valid_al = [to_float(o.get("apt_leads","0")) for o in offices if to_float(o.get("apt_leads","0")) > 0]
+    valid_ol = [to_float(o.get("order_leads","0")) for o in offices if to_float(o.get("order_leads","0")) > 0]
+    avg_al = sum(valid_al)/len(valid_al) if valid_al else 0
+    avg_ol = sum(valid_ol)/len(valid_ol) if valid_ol else 0
+
+    # Sort by leads_pct descending
+    offices_sorted = sorted(offices, key=lambda o: to_float(o.get("leads_pct","0")), reverse=True)
+
+    for i, o in enumerate(offices_sorted):
         # Read % values directly from Excel — no calculation
         lp_str = str(o.get("leads_pct","0%"))
         sp_str = str(o.get("sales_pct","0%"))
@@ -515,7 +528,10 @@ with tab2:
 
         lp_badge = pct_badge(lp_str, 10, ("#d1fae5","#065f46"))
         sp_badge = pct_badge(sp_str, 10, ("#d1fae5","#065f46"))
-        al_badge = pct_badge(al_str, 50, ("#dbeafe","#1e40af"))
+        al_val = to_float(al_str)
+        al_badge = pct_badge(al_str, avg_al, ("#d1fae5","#065f46")) if al_val >= avg_al and al_val > 0                    else f'<span style="font-size:11px;color:#374151;">{al_str}</span>'
+        ol_val = to_float(ol_str)
+        ol_badge = pct_badge(ol_str, avg_ol, ("#d1fae5","#065f46")) if ol_val >= avg_ol and ol_val > 0                    else f'<span style="font-size:11px;color:#374151;">{ol_str}</span>' 
 
         td = "text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#374151;"
 
@@ -543,7 +559,7 @@ with tab2:
           <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{bar_s}</td>
           <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{al_badge}</td>
           <td style="{td}">{oa_str}</td>
-          <td style="{td}">{ol_str}</td>
+          <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{ol_badge}</td>
         </tr>"""
 
     th = "padding:9px 10px;font-size:11px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase;white-space:nowrap;"
@@ -603,7 +619,7 @@ with tab2:
     new Chart(document.getElementById('pie-leads'),{{type:'doughnut',data:{{labels:NAMES,datasets:[{{data:LEADS,backgroundColor:COLORS,borderWidth:1,borderColor:'#fff'}}]}},options:pieOpts}});
     new Chart(document.getElementById('pie-sales'),{{type:'doughnut',data:{{labels:NAMES,datasets:[{{data:SALES,backgroundColor:COLORS,borderWidth:1,borderColor:'#fff'}}]}},options:pieOpts}});
     </script>"""
-    st.components.v1.html(tab2_html, height=len(offices)*40+820, scrolling=False)
+    st.components.v1.html(tab2_html, height=len(offices_sorted)*40+820, scrolling=False)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
