@@ -729,9 +729,8 @@ with tab3:
       var months=getMonths(fm,fy,tm,ty);
       var fromStr=MN[fm]+' '+fy;
       var toStr=MN[tm]+' '+ty;
-      var lyFromStr=MN[fm]+' '+(fy-1);
-      var lyToStr=MN[tm]+' '+(ty-1);
-      document.getElementById('t3badge').textContent=fromStr+' - '+toStr+'  |  vs '+lyFromStr+' - '+lyToStr;
+      var badgeText = fromStr+' - '+toStr;
+      document.getElementById('t3badge').textContent=badgeText;
       TD.forEach(function(c,i){
         var cl=gv(i,months,'clicks'),co=gv(i,months,'cost'),cv=gv(i,months,'conv'),le=gv(i,months,'leads'),ap=gv(i,months,'apt'),cu=gv(i,months,'cust'),sa=gv(i,months,'sales'),ro=gav(i,months),cpc=cv>0?co/cv:0,al=le>0?ap/le*100:0,oa=ap>0?cu/ap*100:null;
         se('t3r'+i+'_clicks',cl.toLocaleString());se('t3r'+i+'_cost',mn(co));se('t3r'+i+'_conv',cv.toLocaleString());se('t3r'+i+'_cpc',cpc>0?'$'+Math.round(cpc):'—');
