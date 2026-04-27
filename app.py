@@ -491,11 +491,23 @@ with tab2:
     total_nls   = sum(o["nl_sales"] for o in offices)
 
     r1, r2, r3, r4, r5 = st.columns(5)
-    with r1: metric_card("Total Leads",  f"{total_ul:,}",                    "blue")
-    with r2: metric_card("Appointments", f"{total_apt:,}",                   "blue")
-    with r3: metric_card("Customers",    f"{total_cust:,}",                  "teal")
-    with r4: metric_card("Total Sales",  f"${float(total_sales or 0):,.0f}", "teal")
-    with r5: metric_card("Apt / Leads",  f"{round(total_apt/total_nl*100) if total_nl else 0}%", "teal")
+    tab2_kpi_style = "style='min-height:80px !important;'"
+    def small_card(label, value, accent):
+        color = "#378ADD" if accent == "blue" else "#1D9E75"
+        st.markdown(
+            f'<div style="background:#fff;border:0.5px solid #e5e7eb;border-radius:10px;overflow:hidden;min-height:80px;display:flex;flex-direction:column;justify-content:center;">' +
+            f'<div style="height:3px;background:{color};"></div>' +
+            f'<div style="padding:10px 14px;text-align:center;">' +
+            f'<div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;font-weight:500;margin-bottom:4px;">{label}</div>' +
+            f'<div style="font-size:24px;font-weight:700;color:#111827;">{value}</div>' +
+            f'</div></div>',
+            unsafe_allow_html=True
+        )
+    with r1: small_card("Total Leads",  f"{total_ul:,}",                    "blue")
+    with r2: small_card("Appointments", f"{total_apt:,}",                   "blue")
+    with r3: small_card("Customers",    f"{total_cust:,}",                  "teal")
+    with r4: small_card("Total Sales",  f"${float(total_sales or 0):,.0f}", "teal")
+    with r5: small_card("Apt / Leads",  f"{round(total_apt/total_ul*100) if total_ul else 0}%", "teal")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
