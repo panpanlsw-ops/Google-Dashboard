@@ -727,7 +727,11 @@ with tab3:
       fm=parseInt(document.getElementById('t3fm').value);fy=parseInt(document.getElementById('t3fy').value);
       tm=parseInt(document.getElementById('t3tm').value);ty=parseInt(document.getElementById('t3ty').value);
       var months=getMonths(fm,fy,tm,ty);
-      document.getElementById('t3badge').textContent=MN[fm]+' '+fy+' - '+MN[tm]+' '+ty+'  |  vs '+MN[fm]+' '+(fy-1)+' - '+MN[tm]+' '+(ty-1);
+      var fromStr=MN[fm]+' '+fy;
+      var toStr=MN[tm]+' '+ty;
+      var lyFromStr=MN[fm]+' '+(fy-1);
+      var lyToStr=MN[tm]+' '+(ty-1);
+      document.getElementById('t3badge').textContent=fromStr+' - '+toStr+'  |  vs '+lyFromStr+' - '+lyToStr;
       TD.forEach(function(c,i){
         var cl=gv(i,months,'clicks'),co=gv(i,months,'cost'),cv=gv(i,months,'conv'),le=gv(i,months,'leads'),ap=gv(i,months,'apt'),cu=gv(i,months,'cust'),sa=gv(i,months,'sales'),ro=gav(i,months),cpc=cv>0?co/cv:0,al=le>0?ap/le*100:0,oa=ap>0?cu/ap*100:null;
         se('t3r'+i+'_clicks',cl.toLocaleString());se('t3r'+i+'_cost',mn(co));se('t3r'+i+'_conv',cv.toLocaleString());se('t3r'+i+'_cpc',cpc>0?'$'+Math.round(cpc):'—');
@@ -768,7 +772,7 @@ with tab3:
         lyd=ly.map(function(p){return(TD[ci]&&TD[ci].trend&&TD[ci].trend[p.y]&&TD[ci].trend[p.y][cm]&&TD[ci].trend[p.y][cm][p.m])||0;});
       }
       var tyy=[...new Set(months.map(function(p){return p.y;}))].join('–');var lyy=[...new Set(ly.map(function(p){return p.y;}))].join('–');
-      document.getElementById('t3lty').textContent=tyy;document.getElementById('t3lly').textContent=lyy;
+      document.getElementById('t3lty').textContent=fy+'–'+ty;document.getElementById('t3lly').textContent=(fy-1)+'–'+(ty-1);
       document.getElementById('t3chint').textContent=MN[fm]+' '+fy+' - '+MN[tm]+' '+ty+'  |  vs same period last year';
       if(tc)tc.destroy();
       tc=new Chart(document.getElementById('t3chart'),{type:'line',data:{labels:labels,datasets:[{data:tyd,borderColor:'#378ADD',backgroundColor:'#378ADD22',fill:true,tension:0.3,pointRadius:4},{data:lyd,borderColor:'#B5D4F4',backgroundColor:'#B5D4F422',fill:true,tension:0.3,pointRadius:4,borderDash:[5,4]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return isR?' '+ctx.parsed.y+'%':' '+ctx.parsed.y.toLocaleString();}}}},scales:{x:{ticks:{font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:16},grid:{display:false}},y:{ticks:{font:{size:10},callback:function(v){return isR?v+'%':v.toLocaleString();}},grid:{color:'#f3f4f6'}}}}});
