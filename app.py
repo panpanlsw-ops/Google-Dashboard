@@ -670,10 +670,10 @@ with tab3:
       <div class="t3h"><span>Campaign Performance</span>
         <div class="t3c">
           <label>From</label>
-          <select id="t3fm"><option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3" selected>Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option></select>
-          <select id="t3fy"><option>2024</option><option>2025</option><option selected>2026</option></select>
+          <select id="t3fm"><option value="0"  selected>Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option></select>
+          <select id="t3fy"><option>2024</option><option selected>2025</option><option>2026</option></select>
           <label>To</label>
-          <select id="t3tm"><option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3" selected>Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option></select>
+          <select id="t3tm"><option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3"  selected>Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option></select>
           <select id="t3ty"><option>2024</option><option>2025</option><option selected>2026</option></select>
           <button onclick="t3Apply()">Apply</button>
         </div>
@@ -711,7 +711,7 @@ with tab3:
     <script>
     const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const TD=""" + camp_json + """;
-    var fm=0,fy=2026,tm=3,ty=2026,ci=-1,cm='clicks',tc=null;
+    var fm=0,fy=2025,tm=3,ty=2026,ci=-1,cm='clicks',tc=null;
     function getMonths(a,b,c,d){var r=[],mo=a,yr=b;while(yr<d||(yr===d&&mo<=c)){r.push({m:mo,y:yr});mo++;if(mo>11){mo=0;yr++;}}return r;}
     function gv(i,months,f){return months.reduce(function(s,p){return s+((TD[i]&&TD[i].trend&&TD[i].trend[p.y]&&TD[i].trend[p.y][f]&&TD[i].trend[p.y][f][p.m])||0);},0);}
     function gav(i,months){var vl=months.filter(function(p){return((TD[i]&&TD[i].trend&&TD[i].trend[p.y]&&TD[i].trend[p.y].clicks&&TD[i].trend[p.y].clicks[p.m])||0)>0;});if(!vl.length)return 0;return vl.reduce(function(s,p){return s+((TD[i]&&TD[i].trend&&TD[i].trend[p.y]&&TD[i].trend[p.y].roi&&TD[i].trend[p.y].roi[p.m])||0);},0)/vl.length;}
