@@ -126,10 +126,35 @@ with tab1:
             f"{projected(d['conversions'], day_of_month, days_in_month):,}", days_left,
             ly_mtd=f"{ly.get('conversions',0):,}", ly_full=f"{lyf.get('conversions',0):,}")
     with c2:
-        metric_card("Cost", f"${d['cost']:,.0f}", "blue", None,
-            f"${projected(d['cost'], day_of_month, days_in_month):,.0f}", days_left,
-            ly_mtd=None, ly_full=None,
-            budget=f"${d.get('budget',0):,.0f}")
+        cost_val   = d.get("cost", 0)
+        budget_val = d.get("budget", 0)
+        pct_used   = round(cost_val / budget_val * 100) if budget_val > 0 else 0
+        pace_cost  = projected(cost_val, day_of_month, days_in_month)
+        pct_pace   = round(pace_cost / budget_val * 100) if budget_val > 0 else 0
+        bar_color  = "#991b1b" if pct_pace > 100 else "#BA7517" if pct_pace > 85 else "#1D9E75"
+        budget_html = (
+            f'<div class="badge-row" style="margin-top:6px;">' +
+            f'<span class="badge badge-budget">Budget: ${budget_val:,.0f}</span>' +
+            f'</div>' +
+            f'<div style="margin-top:6px;">' +
+            f'<div style="display:flex;justify-content:space-between;font-size:11px;color:#6b7280;margin-bottom:3px;">' +
+            f'<span>Spent {pct_used}% of budget</span>' +
+            f'<span style="color:{bar_color};font-weight:600;">Pace: {pct_pace}%</span>' +
+            f'</div>' +
+            f'<div style="height:6px;background:#f3f4f6;border-radius:3px;overflow:hidden;">' +
+            f'<div style="width:{min(pct_pace,100)}%;height:100%;background:{bar_color};border-radius:3px;transition:width 0.3s;"></div>' +
+            f'</div>' +
+            f'</div>'
+        ) if budget_val > 0 else ""
+        st.markdown(
+            f'<div class="metric-card"><div class="metric-accent accent-blue"></div>' +
+            f'<div class="metric-body"><div class="metric-label">Cost</div>' +
+            f'<div class="metric-value">${cost_val:,.0f}</div>' +
+            f'<div class="pace-row">&#8594; Month-end: <span class="pace-projected">${pace_cost:,.0f}</span> ({days_left}d)</div>' +
+            budget_html +
+            f'</div></div>',
+            unsafe_allow_html=True
+        )
     with c3:
         metric_card("CRM Leads", f"{d['leads']:,}", "teal",
             f"Invoca {d['crm_invoca']:,} · Form {d['crm_form']:,}",
