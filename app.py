@@ -798,20 +798,34 @@ with tab3:
       var toStr=MN[tm]+' '+ty;
       var badgeText = fromStr+' - '+toStr;
       document.getElementById('t3badge').textContent=badgeText;
-      var visRows=0;
+      // Build metrics array for sorting
+      var campMetrics=[];
       TD.forEach(function(c,i){
-        var cl=gv(i,months,'clicks'),co=gv(i,months,'cost'),cv=gv(i,months,'conv'),le=gv(i,months,'leads'),ap=gv(i,months,'apt'),cu=gv(i,months,'cust'),sa=gv(i,months,'sales'),ro=gav(i,months),cpc=cv>0?co/cv:0,al=le>0?ap/le*100:0,oa=ap>0?cu/ap*100:null;
-        var rows=document.querySelectorAll('#t3body tr.data-row');
-        if(cl===0&&co===0&&le===0&&cv===0){
-          if(rows[i])rows[i].style.display='none';
-          return;
-        }
-        if(rows[i])rows[i].style.display='';
-        visRows++;
-        ro=ro*100;
-        se('t3r'+i+'_clicks',fmt(cl));se('t3r'+i+'_cost',mn(co));se('t3r'+i+'_conv',fmt(cv));se('t3r'+i+'_cpc',cpc>0?'$'+fmt(cpc):'—');
-        se('t3r'+i+'_leads',fmt(le));se('t3r'+i+'_apt',fmt(ap));se('t3r'+i+'_cust',fmt(cu));se('t3r'+i+'_sales',mn(sa));
-        se('t3r'+i+'_roi',rb(ro));se('t3r'+i+'_al',pb(al,30));se('t3r'+i+'_oa',oa!==null?pb(oa,20):'#DIV/0!');
+        var cl=gv(i,months,'clicks'),co=gv(i,months,'cost'),cv=gv(i,months,'conv'),le=gv(i,months,'leads'),ap=gv(i,months,'apt'),cu=gv(i,months,'cust'),sa=gv(i,months,'sales'),ro=gav(i,months)*100,cpc=cv>0?co/cv:0,al=le>0?ap/le*100:0,oa=ap>0?cu/ap*100:null;
+        var active=!(cl===0&&co===0&&le===0&&cv===0);
+        campMetrics.push({i:i,cl:cl,co:co,cv:cv,le:le,ap:ap,cu:cu,sa:sa,ro:ro,cpc:cpc,al:al,oa:oa,active:active});
+      });
+
+      // Sort by ROI desc, then Sales desc
+      campMetrics.sort(function(a,b){
+        if(!a.active && b.active) return 1;
+        if(a.active && !b.active) return -1;
+        if(b.ro !== a.ro) return b.ro - a.ro;
+        return b.sa - a.sa;
+      });
+
+      // Reorder rows in DOM and update values
+      var tbody=document.getElementById('t3body');
+      var rows=Array.from(tbody.querySelectorAll('tr.data-row'));
+      campMetrics.forEach(function(m,sortIdx){
+        var row=rows[m.i];
+        if(!row)return;
+        tbody.appendChild(row); // reorder
+        if(!m.active){row.style.display='none';return;}
+        row.style.display='';
+        se('t3r'+m.i+'_clicks',fmt(m.cl));se('t3r'+m.i+'_cost',mn(m.co));se('t3r'+m.i+'_conv',fmt(m.cv));se('t3r'+m.i+'_cpc',m.cpc>0?'$'+fmt(m.cpc):'—');
+        se('t3r'+m.i+'_leads',fmt(m.le));se('t3r'+m.i+'_apt',fmt(m.ap));se('t3r'+m.i+'_cust',fmt(m.cu));se('t3r'+m.i+'_sales',mn(m.sa));
+        se('t3r'+m.i+'_roi',rb(m.ro));se('t3r'+m.i+'_al',pb(m.al,30));se('t3r'+m.i+'_oa',m.oa!==null?pb(m.oa,20):'#DIV/0!');
       });
       var tot={cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};
       TD.forEach(function(_,i){tot.cl+=gv(i,months,'clicks');tot.co+=gv(i,months,'cost');tot.cv+=gv(i,months,'conv');tot.le+=gv(i,months,'leads');tot.ap+=gv(i,months,'apt');tot.cu+=gv(i,months,'cust');tot.sa+=gv(i,months,'sales');});
