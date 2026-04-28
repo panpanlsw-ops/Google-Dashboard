@@ -780,6 +780,11 @@ with tab3:
     const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const TD=""" + camp_json + """;
     var fm=0,fy=2025,tm=3,ty=2026,ci=-1,cm='clicks',tc=null;
+    function fmt(n){if(n===null||n===undefined||isNaN(n)||n==='')return'0';var r=Math.round(n*100)/100;return r.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2});}
+    function rb(v){return v>=0?'<span class="rp">'+fmt(v)+'%</span>':'<span class="rn">'+fmt(v)+'%</span>';}
+    function pb(v,t){if(!isFinite(v))return'—';return v>=t?'<span class="pg">'+fmt(v)+'%</span>':'<span class="pr">'+fmt(v)+'%</span>';}
+    function mn(n){return n>0?'$'+fmt(n):'$0';}
+    function se(id,v){var el=document.getElementById(id);if(el)el.innerHTML=v;}
     function getMonths(a,b,c,d){var r=[],mo=a,yr=b;while(yr<d||(yr===d&&mo<=c)){r.push({m:mo,y:yr});mo++;if(mo>11){mo=0;yr++;}}return r;}
     function tv(i,y,f,m){var yr=String(y);return(TD[i]&&TD[i].trend&&TD[i].trend[yr]&&TD[i].trend[yr][f]&&typeof TD[i].trend[yr][f][m]!=='undefined'?TD[i].trend[yr][f][m]:0);}
     function gv(i,months,f){return months.reduce(function(s,p){return s+tv(i,p.y,f,p.m);},0);}
