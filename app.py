@@ -812,7 +812,8 @@ with tab3:
       TD.forEach(function(_,i){tot.cl+=gv(i,months,'clicks');tot.co+=gv(i,months,'cost');tot.cv+=gv(i,months,'conv');tot.le+=gv(i,months,'leads');tot.ap+=gv(i,months,'apt');tot.cu+=gv(i,months,'cust');tot.sa+=gv(i,months,'sales');});
       var ar=TD.reduce(function(s,_,i){return s+gav(i,months);},0)/TD.length;
       ar=ar*100;
-      document.getElementById('t3foot').innerHTML='<tr><td>Total</td><td>'+fmt(tot.cl)+'</td><td>'+mn(tot.co)+'</td><td>'+fmt(tot.cv)+'</td><td>—</td><td>'+fmt(tot.le)+'</td><td>'+fmt(tot.ap)+'</td><td>'+fmt(tot.cu)+'</td><td>'+mn(tot.sa)+'</td><td>'+rb(ar)+'</td><td>'+pb(tot.le>0?tot.ap/tot.le*100:0,30)+'</td><td>'+pb(tot.ap>0?tot.cu/tot.ap*100:0,15)+'</td></tr>';
+      var tot_cpc=tot.cv>0?'$'+fmt(tot.co/tot.cv):'—';
+      document.getElementById('t3foot').innerHTML='<tr><td>Total</td><td>'+fmt(tot.cl)+'</td><td>'+mn(tot.co)+'</td><td>'+fmt(tot.cv)+'</td><td>'+tot_cpc+'</td><td>'+fmt(tot.le)+'</td><td>'+fmt(tot.ap)+'</td><td>'+fmt(tot.cu)+'</td><td>'+mn(tot.sa)+'</td><td>'+rb(ar)+'</td><td>'+pb(tot.le>0?tot.ap/tot.le*100:0,30)+'</td><td>'+pb(tot.ap>0?tot.cu/tot.ap*100:0,15)+'</td></tr>';
       t3UC();
     }
     function t3Select(row,idx){
