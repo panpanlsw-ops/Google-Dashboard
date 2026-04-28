@@ -854,11 +854,15 @@ with tab3:
       var search={cl:totals.cl-pmax.cl,co:totals.co-pmax.co,cv:totals.cv-pmax.cv,le:totals.le-pmax.le,ap:totals.ap-pmax.ap,cu:totals.cu-pmax.cu,sa:totals.sa-pmax.sa};
       var searchNoBrand={cl:search.cl-brand.cl,co:search.co-brand.co,cv:search.cv-brand.cv,le:search.le-brand.le,ap:search.ap-brand.ap,cu:search.cu-brand.cu,sa:search.sa-brand.sa};
 
+      function roiCalc(d){
+        return d.co>0?fmt((d.sa-d.co)/d.co*100)+'%':'—';
+      }
       function summaryRow(label, d, bg){
         var cpc=d.cv>0?'$'+fmt(d.co/d.cv):'—';
         var al=d.le>0?fmt(d.ap/d.le*100)+'%':'—';
         var oa=d.ap>0?fmt(d.cu/d.ap*100)+'%':'—';
-        return '<tr style="background:'+bg+';font-weight:700;border-top:2px solid #e5e7eb;">'+
+        var roi=roiCalc(d);
+        return '<tr style="background:'+bg+';font-weight:700;">'+
           '<td style="padding:7px 8px;color:#111827;font-size:12px;">'+label+'</td>'+
           '<td style="text-align:right;padding:7px 8px;">'+fmt(d.cl)+'</td>'+
           '<td style="text-align:right;padding:7px 8px;">'+mn(d.co)+'</td>'+
@@ -868,7 +872,7 @@ with tab3:
           '<td style="text-align:right;padding:7px 8px;">'+fmt(d.ap)+'</td>'+
           '<td style="text-align:right;padding:7px 8px;">'+fmt(d.cu)+'</td>'+
           '<td style="text-align:right;padding:7px 8px;">'+mn(d.sa)+'</td>'+
-          '<td style="text-align:right;padding:7px 8px;">—</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+roi+'</td>'+
           '<td style="text-align:right;padding:7px 8px;">'+al+'</td>'+
           '<td style="text-align:right;padding:7px 8px;">'+oa+'</td>'+
           '</tr>';
@@ -879,14 +883,8 @@ with tab3:
         summaryRow('🟢 All Search (excl. PMax)', search, '#F0FDF4') +
         summaryRow('🟡 Search without Brand', searchNoBrand, '#FEFCE8');
 
-      // Insert summary rows at top of tbody
-      var existingSummary=document.getElementById('t3summary');
-      if(existingSummary)existingSummary.remove();
-      var summDiv=document.createElement('tbody');
-      summDiv.id='t3summary';
-      summDiv.innerHTML=summaryHtml;
+      // Add summary rows to tfoot (after Total row)
       var tbody=document.getElementById('t3body');
-      tbody.parentNode.insertBefore(summDiv, tbody);
 
       // Reorder rows and update values
       var rows=Array.from(tbody.querySelectorAll('tr.data-row'));
@@ -913,7 +911,24 @@ with tab3:
       var ar=TD.reduce(function(s,_,i){return s+gav(i,months);},0)/TD.length;
       ar=ar*100;
       var tot_cpc=tot.cv>0?'$'+fmt(tot.co/tot.cv):'—';
-      document.getElementById('t3foot').innerHTML='<tr><td>Total</td><td>'+fmt(tot.cl)+'</td><td>'+mn(tot.co)+'</td><td>'+fmt(tot.cv)+'</td><td>'+tot_cpc+'</td><td>'+fmt(tot.le)+'</td><td>'+fmt(tot.ap)+'</td><td>'+fmt(tot.cu)+'</td><td>'+mn(tot.sa)+'</td><td>'+rb(ar)+'</td><td>'+pb(tot.le>0?tot.ap/tot.le*100:0,30)+'</td><td>'+pb(tot.ap>0?tot.cu/tot.ap*100:0,15)+'</td></tr>';
+      var tot_roi=tot.co>0?fmt((tot.sa-tot.co)/tot.co*100)+'%':'—';
+      var tot_al=tot.le>0?fmt(tot.ap/tot.le*100)+'%':'—';
+      var tot_oa=tot.ap>0?fmt(tot.cu/tot.ap*100)+'%':'—';
+      document.getElementById('t3foot').innerHTML=
+        '<tr style="background:#f8f9fa;font-weight:700;border-top:2px solid #e5e7eb;">'+
+        '<td style="padding:8px 8px;">Total</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.cl)+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+mn(tot.co)+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.cv)+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+tot_cpc+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.le)+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.ap)+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.cu)+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+mn(tot.sa)+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+tot_roi+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+tot_al+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+tot_oa+'</td>'+
+        '</tr>'+summaryHtml;
       t3UC();
     }
     function t3Select(row,idx){
