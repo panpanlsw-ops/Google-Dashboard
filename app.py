@@ -185,110 +185,7 @@ with tab1:
             unsafe_allow_html=True
         )
 
-    # ── Alert Lists: campaigns with fewer leads or appointments than LY ─────
-    all_camps = get_campaigns()
-    leads_down = []
-    apts_down  = []
-    for camp_name in all_camps.values():
-        try:
-            cd = get_data(camp_name)
-            if cd.get("cost", 0) == 0:
-                continue  # skip inactive campaigns
-            ty_leads = cd.get("leads", 0)
-            ly_leads = cd.get("ly_mtd", {}).get("leads", 0)
-            ty_apt   = cd.get("appointments", 0)
-            ly_apt   = cd.get("ly_mtd", {}).get("appointments", 0)
-            if camp_name == "All campaigns":
-                continue
-            if ly_leads > 0 and ty_leads < ly_leads:
-                diff = ly_leads - ty_leads
-                pct  = round(diff / ly_leads * 100)
-                leads_down.append((camp_name, ty_leads, ly_leads, diff, pct))
-            if ly_apt > 0 and ty_apt < ly_apt:
-                diff = ly_apt - ty_apt
-                pct  = round(diff / ly_apt * 100)
-                apts_down.append((camp_name, ty_apt, ly_apt, diff, pct))
-        except:
-            continue
-
-    leads_down.sort(key=lambda x: x[4], reverse=True)
-    apts_down.sort(key=lambda x: x[4], reverse=True)
-
-    if leads_down or apts_down:
-        al1, al2 = st.columns(2)
-        with al1:
-            if leads_down:
-                items = "".join([
-                    f'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid #f3f4f6;">' +
-                    f'<span style="font-size:14px;color:#111827;font-weight:600;">{name}</span>' +
-                    f'<span style="font-size:13px;"><span style="color:#1D9E75;font-weight:700;">{ty}</span>' +
-                    f'<span style="color:#9ca3af;"> vs </span><span style="color:#6b7280;font-weight:600;">{ly}</span>' +
-                    f'<span style="background:#fee2e2;color:#991b1b;font-size:12px;padding:2px 8px;border-radius:10px;margin-left:8px;font-weight:600;">▼{pct}%</span></span></div>'
-                    for name, ty, ly, diff, pct in leads_down
-                ])
-                st.markdown(
-                    f'<div style="background:#fff;border:0.5px solid #fca5a5;border-radius:10px;padding:14px;">' +
-                    f'<div style="font-size:11px;font-weight:600;color:#991b1b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">⚠ Leads Below Last Year MTD</div>' +
-                    items + '</div>', unsafe_allow_html=True
-                )
-            else:
-                st.markdown('<div style="background:#f0fdf4;border:0.5px solid #86efac;border-radius:10px;padding:14px;font-size:12px;color:#166534;">✓ All campaigns leads are above last year</div>', unsafe_allow_html=True)
-
-        with al2:
-            if apts_down:
-                items = "".join([
-                    f'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid #f3f4f6;">' +
-                    f'<span style="font-size:14px;color:#111827;font-weight:600;">{name}</span>' +
-                    f'<span style="font-size:13px;"><span style="color:#1D9E75;font-weight:700;">{ty}</span>' +
-                    f'<span style="color:#9ca3af;"> vs </span><span style="color:#6b7280;font-weight:600;">{ly}</span>' +
-                    f'<span style="background:#fee2e2;color:#991b1b;font-size:12px;padding:2px 8px;border-radius:10px;margin-left:8px;font-weight:600;">▼{pct}%</span></span></div>'
-                    for name, ty, ly, diff, pct in apts_down
-                ])
-                st.markdown(
-                    f'<div style="background:#fff;border:0.5px solid #fca5a5;border-radius:10px;padding:14px;">' +
-                    f'<div style="font-size:11px;font-weight:600;color:#991b1b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">⚠ Appointments Below Last Year MTD</div>' +
-                    items + '</div>', unsafe_allow_html=True
-                )
-            else:
-                st.markdown('<div style="background:#f0fdf4;border:0.5px solid #86efac;border-radius:10px;padding:14px;font-size:12px;color:#166534;">✓ All campaigns appointments are above last year</div>', unsafe_allow_html=True)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-    # ── MTD & Comparison ──────────────────────────────────────────────────────
-    is_all = (campaign == "All campaigns")
-    hint = "Showing all campaigns MTD — select a specific campaign to see monthly comparison" if is_all \
-           else f"MTD & monthly comparison for {campaign}"
-    st.caption(hint)
-
-    roi = get_roi_data(campaign, roi_start, roi_end)
-    chart_type = "bar" if is_all else "line"
-
-    if is_all:
-        labels     = list(CAMPAIGNS.values())
-        camp_names = list(CAMPAIGNS.values())
-        def series(field):
-            ty = [get_roi_data(name, roi_start, roi_end)["ty"].get(field, 0) for name in camp_names]
-            ly = [get_roi_data(name, roi_start, roi_end)["ly"].get(field, 0) for name in camp_names]
-            return ty, ly
-    else:
-        # Single campaign: TY vs LY as 2 bars
-        labels = [campaign]
-        def series(field):
-            ty = [roi["ty"].get(field, 0)]
-            ly = [roi["ly"].get(field, 0)]
-            return ty, ly
-
-    conv_ty,  conv_ly  = series("conversions")
-    cost_ty,  cost_ly  = series("cost")
-    leads_ty, leads_ly = series("leads")
-    appts_ty, appts_ly = series("appointments")
-    cust_ty,  cust_ly  = series("customers")
-    cpl_ty,   cpl_ly   = series("cost_per_lead")
-    cpa_ty,   cpa_ly   = series("cost_per_appointment")
-    # (roi not used in charts)
-    all_camp_names = list(CAMPAIGNS.values())
-    apt_ty,  apt_ly  = appts_ty, appts_ly
-
+    st.markdown("### 📈 Monthly Pace vs Last Month")
     # ── Gauge data for Leads and Appointments ────────────────────────────────
     g_leads_ty   = d.get("leads", 0)
     g_apt_ty     = d.get("appointments", 0)
@@ -394,6 +291,112 @@ with tab1:
     </div>
     """
     st.components.v1.html(gauge_html, height=320, scrolling=False)
+
+    st.markdown("### 📊 MTD & Comparison with Last Year")
+    # ── Alert Lists: campaigns with fewer leads or appointments than LY ─────
+    all_camps = get_campaigns()
+    leads_down = []
+    apts_down  = []
+    for camp_name in all_camps.values():
+        try:
+            cd = get_data(camp_name)
+            if cd.get("cost", 0) == 0:
+                continue  # skip inactive campaigns
+            ty_leads = cd.get("leads", 0)
+            ly_leads = cd.get("ly_mtd", {}).get("leads", 0)
+            ty_apt   = cd.get("appointments", 0)
+            ly_apt   = cd.get("ly_mtd", {}).get("appointments", 0)
+            if camp_name == "All campaigns":
+                continue
+            if ly_leads > 0 and ty_leads < ly_leads:
+                diff = ly_leads - ty_leads
+                pct  = round(diff / ly_leads * 100)
+                leads_down.append((camp_name, ty_leads, ly_leads, diff, pct))
+            if ly_apt > 0 and ty_apt < ly_apt:
+                diff = ly_apt - ty_apt
+                pct  = round(diff / ly_apt * 100)
+                apts_down.append((camp_name, ty_apt, ly_apt, diff, pct))
+        except:
+            continue
+
+    leads_down.sort(key=lambda x: x[4], reverse=True)
+    apts_down.sort(key=lambda x: x[4], reverse=True)
+
+    if leads_down or apts_down:
+        al1, al2 = st.columns(2)
+        with al1:
+            if leads_down:
+                items = "".join([
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid #f3f4f6;">' +
+                    f'<span style="font-size:14px;color:#111827;font-weight:600;">{name}</span>' +
+                    f'<span style="font-size:13px;"><span style="color:#1D9E75;font-weight:700;">{ty}</span>' +
+                    f'<span style="color:#9ca3af;"> vs </span><span style="color:#6b7280;font-weight:600;">{ly}</span>' +
+                    f'<span style="background:#fee2e2;color:#991b1b;font-size:12px;padding:2px 8px;border-radius:10px;margin-left:8px;font-weight:600;">▼{pct}%</span></span></div>'
+                    for name, ty, ly, diff, pct in leads_down
+                ])
+                st.markdown(
+                    f'<div style="background:#fff;border:0.5px solid #fca5a5;border-radius:10px;padding:14px;">' +
+                    f'<div style="font-size:11px;font-weight:600;color:#991b1b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">⚠ Leads Below Last Year MTD</div>' +
+                    items + '</div>', unsafe_allow_html=True
+                )
+            else:
+                st.markdown('<div style="background:#f0fdf4;border:0.5px solid #86efac;border-radius:10px;padding:14px;font-size:12px;color:#166534;">✓ All campaigns leads are above last year</div>', unsafe_allow_html=True)
+
+        with al2:
+            if apts_down:
+                items = "".join([
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid #f3f4f6;">' +
+                    f'<span style="font-size:14px;color:#111827;font-weight:600;">{name}</span>' +
+                    f'<span style="font-size:13px;"><span style="color:#1D9E75;font-weight:700;">{ty}</span>' +
+                    f'<span style="color:#9ca3af;"> vs </span><span style="color:#6b7280;font-weight:600;">{ly}</span>' +
+                    f'<span style="background:#fee2e2;color:#991b1b;font-size:12px;padding:2px 8px;border-radius:10px;margin-left:8px;font-weight:600;">▼{pct}%</span></span></div>'
+                    for name, ty, ly, diff, pct in apts_down
+                ])
+                st.markdown(
+                    f'<div style="background:#fff;border:0.5px solid #fca5a5;border-radius:10px;padding:14px;">' +
+                    f'<div style="font-size:11px;font-weight:600;color:#991b1b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">⚠ Appointments Below Last Year MTD</div>' +
+                    items + '</div>', unsafe_allow_html=True
+                )
+            else:
+                st.markdown('<div style="background:#f0fdf4;border:0.5px solid #86efac;border-radius:10px;padding:14px;font-size:12px;color:#166534;">✓ All campaigns appointments are above last year</div>', unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── MTD & Comparison Charts ─────────────────────────────────────────────
+    is_all = (campaign == "All campaigns")
+    hint = "Showing all campaigns MTD — select a specific campaign to see monthly comparison" if is_all \
+           else f"MTD & monthly comparison for {campaign}"
+    st.caption(hint)
+
+    roi = get_roi_data(campaign, roi_start, roi_end)
+    chart_type = "bar" if is_all else "line"
+
+    if is_all:
+        labels     = list(CAMPAIGNS.values())
+        camp_names = list(CAMPAIGNS.values())
+        def series(field):
+            ty = [get_roi_data(name, roi_start, roi_end)["ty"].get(field, 0) for name in camp_names]
+            ly = [get_roi_data(name, roi_start, roi_end)["ly"].get(field, 0) for name in camp_names]
+            return ty, ly
+    else:
+        # Single campaign: TY vs LY as 2 bars
+        labels = [campaign]
+        def series(field):
+            ty = [roi["ty"].get(field, 0)]
+            ly = [roi["ly"].get(field, 0)]
+            return ty, ly
+
+    conv_ty,  conv_ly  = series("conversions")
+    cost_ty,  cost_ly  = series("cost")
+    leads_ty, leads_ly = series("leads")
+    appts_ty, appts_ly = series("appointments")
+    cust_ty,  cust_ly  = series("customers")
+    cpl_ty,   cpl_ly   = series("cost_per_lead")
+    cpa_ty,   cpa_ly   = series("cost_per_appointment")
+    # (roi not used in charts)
+    all_camp_names = list(CAMPAIGNS.values())
+    apt_ty,  apt_ly  = appts_ty, appts_ly
+
 
     st.markdown("---")
 
