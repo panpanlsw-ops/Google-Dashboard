@@ -897,6 +897,7 @@ with tab3:
     <script>
     const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const TD={trend_data};
+    const ACTIVE_NAMES={json.dumps([x['name'] for x in filtered])};
     const FM={fm_idx};const FY={t3_fy};const TM={tm_idx};const TY={t3_ty};
     var selName=null,cm='clicks',tc=null;
 
@@ -908,6 +909,7 @@ with tab3:
     }}
     function tvAll(y,f,m){{
       return TD.reduce(function(s,c){{
+        if(ACTIVE_NAMES.indexOf(c.name)<0)return s;
         var yr=String(y);
         if(!c.trend||!c.trend[yr])return s;
         return s+(c.trend[yr][f]?c.trend[yr][f][m]||0:0);
