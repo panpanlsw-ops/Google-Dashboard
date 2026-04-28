@@ -839,17 +839,21 @@ with tab3:
         return n.indexOf('brand')>-1||n.indexOf('lifesource brand')>-1;
       }
 
+      // Only count campaigns with actual data for selected period
       var totals={cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};
       var pmax  ={cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};
       var brand ={cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};
 
       campMetrics.forEach(function(m){
-        if(!m.active)return;
+        if(!m.active)return;  // skip zero-data campaigns
         var name=TD[m.i]?TD[m.i].name:'';
         totals.cl+=m.cl;totals.co+=m.co;totals.cv+=m.cv;totals.le+=m.le;totals.ap+=m.ap;totals.cu+=m.cu;totals.sa+=m.sa;
         if(isPmax(name)){pmax.cl+=m.cl;pmax.co+=m.co;pmax.cv+=m.cv;pmax.le+=m.le;pmax.ap+=m.ap;pmax.cu+=m.cu;pmax.sa+=m.sa;}
-        if(isBrand(name)){brand.cl+=m.cl;brand.co+=m.co;brand.cv+=m.cv;brand.le+=m.le;brand.ap+=m.ap;brand.cu+=m.cu;brand.sa+=m.sa;}
+        if(isBrand(name)&&!isPmax(name)){brand.cl+=m.cl;brand.co+=m.co;brand.cv+=m.cv;brand.le+=m.le;brand.ap+=m.ap;brand.cu+=m.cu;brand.sa+=m.sa;}
       });
+      
+      // Only show PMax row if pmax has data
+      var hasPmax=pmax.co>0||pmax.cl>0;
 
       var search={cl:totals.cl-pmax.cl,co:totals.co-pmax.co,cv:totals.cv-pmax.cv,le:totals.le-pmax.le,ap:totals.ap-pmax.ap,cu:totals.cu-pmax.cu,sa:totals.sa-pmax.sa};
       var searchNoBrand={cl:search.cl-brand.cl,co:search.co-brand.co,cv:search.cv-brand.cv,le:search.le-brand.le,ap:search.ap-brand.ap,cu:search.cu-brand.cu,sa:search.sa-brand.sa};
@@ -878,8 +882,7 @@ with tab3:
           '</tr>';
       }
 
-      var summaryHtml =
-        summaryRow('🔵 PMax Total', pmax, '#EFF6FF') +
+      var summaryHtml = (hasPmax?summaryRow('🔵 PMax Total', pmax, '#EFF6FF'):'') +
         summaryRow('🟢 All Search (excl. PMax)', search, '#F0FDF4') +
         summaryRow('🟡 Search without Brand', searchNoBrand, '#FEFCE8');
 
