@@ -249,7 +249,6 @@ def get_regional_data(start_date: date, end_date: date) -> list:
 
 
 # ── Tab 3: Campaign Performance ───────────────────────────────────────────────
-@st.cache_data(ttl=0)
 def get_campaign_data() -> list:
     df = pd.read_excel(_excel_path(), sheet_name="Tab3_Campaign", header=3)
     col_map3 = {

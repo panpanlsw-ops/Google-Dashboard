@@ -13,6 +13,13 @@ with st.sidebar:
         st.cache_data.clear()
         st.rerun()
     st.caption("Click after uploading new Excel to GitHub")
+    # Show last modified time of Excel
+    import os
+    excel_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard_data.xlsx")
+    if os.path.exists(excel_path):
+        import datetime
+        mtime = os.path.getmtime(excel_path)
+        st.caption(f"Excel last updated: {datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')}")
 
 # Load campaigns dynamically from Excel
 try:
@@ -716,8 +723,13 @@ with tab2:
 # TAB 3 — Campaign Performance
 # ══════════════════════════════════════════════════════════════════════════════
 with tab3:
+    import json, hashlib, os
+    # Force cache bust when Excel file changes
+    try:
+        _mtime = str(os.path.getmtime(_excel_path()))
+    except:
+        _mtime = "0"
     camp_data = get_campaign_data()
-    import json
     camp_json = json.dumps([{"name": c["name"], "trend": c["trend"]} for c in camp_data])
     camp_rows = ""
     for i, c in enumerate(camp_data):
