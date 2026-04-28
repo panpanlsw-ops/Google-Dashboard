@@ -296,7 +296,9 @@ with tab1:
     # ── Alert Lists: campaigns with fewer leads or appointments than LY ─────
     all_camps = get_campaigns()
     leads_down = []
+    leads_up   = []
     apts_down  = []
+    apts_up    = []
     for camp_name in all_camps.values():
         try:
             cd = get_data(camp_name)
@@ -308,23 +310,45 @@ with tab1:
             ly_apt   = cd.get("ly_mtd", {}).get("appointments", 0)
             if camp_name == "All campaigns":
                 continue
-            if ly_leads > 0 and ty_leads < ly_leads:
-                diff = ly_leads - ty_leads
+            if ly_leads > 0:
+                diff = abs(ty_leads - ly_leads)
                 pct  = round(diff / ly_leads * 100)
-                leads_down.append((camp_name, ty_leads, ly_leads, diff, pct))
-            if ly_apt > 0 and ty_apt < ly_apt:
-                diff = ly_apt - ty_apt
+                if ty_leads < ly_leads:
+                    leads_down.append((camp_name, ty_leads, ly_leads, diff, pct))
+                elif ty_leads > ly_leads:
+                    leads_up.append((camp_name, ty_leads, ly_leads, diff, pct))
+            if ly_apt > 0:
+                diff = abs(ty_apt - ly_apt)
                 pct  = round(diff / ly_apt * 100)
-                apts_down.append((camp_name, ty_apt, ly_apt, diff, pct))
+                if ty_apt < ly_apt:
+                    apts_down.append((camp_name, ty_apt, ly_apt, diff, pct))
+                elif ty_apt > ly_apt:
+                    apts_up.append((camp_name, ty_apt, ly_apt, diff, pct))
         except:
             continue
 
     leads_down.sort(key=lambda x: x[4], reverse=True)
+    leads_up.sort(key=lambda x: x[4], reverse=True)
     apts_down.sort(key=lambda x: x[4], reverse=True)
+    apts_up.sort(key=lambda x: x[4], reverse=True)
 
     if leads_down or apts_down:
         al1, al2 = st.columns(2)
         with al1:
+            if leads_up:
+                items_up = "".join([
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid #f3f4f6;">' +
+                    f'<span style="font-size:14px;color:#111827;font-weight:600;">{name}</span>' +
+                    f'<span style="font-size:13px;"><span style="color:#1D9E75;font-weight:700;">{ty}</span>' +
+                    f'<span style="color:#9ca3af;"> vs </span><span style="color:#6b7280;font-weight:600;">{ly}</span>' +
+                    f'<span style="background:#d1fae5;color:#065f46;font-size:12px;padding:2px 8px;border-radius:10px;margin-left:8px;font-weight:600;">▲{pct}%</span></span></div>'
+                    for name, ty, ly, diff, pct in leads_up
+                ])
+                st.markdown(
+                    f'<div style="background:#fff;border:0.5px solid #86efac;border-radius:10px;padding:14px;margin-bottom:12px;">' +
+                    f'<div style="font-size:11px;font-weight:600;color:#065f46;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">✅ Leads Above Last Year MTD</div>' +
+                    items_up + '</div>', unsafe_allow_html=True
+                )
             if leads_down:
                 items = "".join([
                     f'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid #f3f4f6;">' +
@@ -343,6 +367,20 @@ with tab1:
                 st.markdown('<div style="background:#f0fdf4;border:0.5px solid #86efac;border-radius:10px;padding:14px;font-size:12px;color:#166534;">✓ All campaigns leads are above last year</div>', unsafe_allow_html=True)
 
         with al2:
+            if apts_up:
+                items_up2 = "".join([
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid #f3f4f6;">' +
+                    f'<span style="font-size:14px;color:#111827;font-weight:600;">{name}</span>' +
+                    f'<span style="font-size:13px;"><span style="color:#1D9E75;font-weight:700;">{ty}</span>' +
+                    f'<span style="color:#9ca3af;"> vs </span><span style="color:#6b7280;font-weight:600;">{ly}</span>' +
+                    f'<span style="background:#d1fae5;color:#065f46;font-size:12px;padding:2px 8px;border-radius:10px;margin-left:8px;font-weight:600;">▲{pct}%</span></span></div>'
+                    for name, ty, ly, diff, pct in apts_up
+                ])
+                st.markdown(
+                    f'<div style="background:#fff;border:0.5px solid #86efac;border-radius:10px;padding:14px;margin-bottom:12px;">' +
+                    f'<div style="font-size:11px;font-weight:600;color:#065f46;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">✅ Appointments Above Last Year MTD</div>' +
+                    items_up2 + '</div>', unsafe_allow_html=True
+                )
             if apts_down:
                 items = "".join([
                     f'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid #f3f4f6;">' +
@@ -748,14 +786,16 @@ with tab3:
       document.getElementById('t3badge').textContent=badgeText;
       TD.forEach(function(c,i){
         var cl=gv(i,months,'clicks'),co=gv(i,months,'cost'),cv=gv(i,months,'conv'),le=gv(i,months,'leads'),ap=gv(i,months,'apt'),cu=gv(i,months,'cust'),sa=gv(i,months,'sales'),ro=gav(i,months),cpc=cv>0?co/cv:0,al=le>0?ap/le*100:0,oa=ap>0?cu/ap*100:null;
-        se('t3r'+i+'_clicks',cl.toLocaleString());se('t3r'+i+'_cost',mn(co));se('t3r'+i+'_conv',cv.toLocaleString());se('t3r'+i+'_cpc',cpc>0?'$'+Math.round(cpc):'—');
-        se('t3r'+i+'_leads',le.toLocaleString());se('t3r'+i+'_apt',ap.toLocaleString());se('t3r'+i+'_cust',cu.toLocaleString());se('t3r'+i+'_sales',mn(sa));
+        ro=Math.abs(ro)<10?ro*100:ro; // convert decimal ROI to percent if needed
+        se('t3r'+i+'_clicks',fmt(cl));se('t3r'+i+'_cost',mn(co));se('t3r'+i+'_conv',fmt(cv));se('t3r'+i+'_cpc',cpc>0?'$'+fmt(cpc):'—');
+        se('t3r'+i+'_leads',fmt(le));se('t3r'+i+'_apt',fmt(ap));se('t3r'+i+'_cust',fmt(cu));se('t3r'+i+'_sales',mn(sa));
         se('t3r'+i+'_roi',rb(ro));se('t3r'+i+'_al',pb(al,30));se('t3r'+i+'_oa',oa!==null?pb(oa,20):'#DIV/0!');
       });
       var tot={cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};
       TD.forEach(function(_,i){tot.cl+=gv(i,months,'clicks');tot.co+=gv(i,months,'cost');tot.cv+=gv(i,months,'conv');tot.le+=gv(i,months,'leads');tot.ap+=gv(i,months,'apt');tot.cu+=gv(i,months,'cust');tot.sa+=gv(i,months,'sales');});
       var ar=TD.reduce(function(s,_,i){return s+gav(i,months);},0)/TD.length;
-      document.getElementById('t3foot').innerHTML='<tr><td>Total</td><td>'+tot.cl.toLocaleString()+'</td><td>'+mn(tot.co)+'</td><td>'+tot.cv+'</td><td>—</td><td>'+tot.le+'</td><td>'+tot.ap+'</td><td>'+tot.cu+'</td><td>'+mn(tot.sa)+'</td><td>'+rb(ar)+'</td><td>'+pb(tot.le>0?tot.ap/tot.le*100:0,30)+'</td><td>'+pb(tot.ap>0?tot.cu/tot.ap*100:0,15)+'</td></tr>';
+      ar=Math.abs(ar)<10?ar*100:ar;
+      document.getElementById('t3foot').innerHTML='<tr><td>Total</td><td>'+fmt(tot.cl)+'</td><td>'+mn(tot.co)+'</td><td>'+fmt(tot.cv)+'</td><td>—</td><td>'+fmt(tot.le)+'</td><td>'+fmt(tot.ap)+'</td><td>'+fmt(tot.cu)+'</td><td>'+mn(tot.sa)+'</td><td>'+rb(ar)+'</td><td>'+pb(tot.le>0?tot.ap/tot.le*100:0,30)+'</td><td>'+pb(tot.ap>0?tot.cu/tot.ap*100:0,15)+'</td></tr>';
       t3UC();
     }
     function t3Select(row,idx){
