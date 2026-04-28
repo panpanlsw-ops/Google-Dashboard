@@ -801,8 +801,16 @@ with tab3:
       var toStr=MN[tm]+' '+ty;
       var badgeText = fromStr+' - '+toStr;
       document.getElementById('t3badge').textContent=badgeText;
+      var visRows=0;
       TD.forEach(function(c,i){
         var cl=gv(i,months,'clicks'),co=gv(i,months,'cost'),cv=gv(i,months,'conv'),le=gv(i,months,'leads'),ap=gv(i,months,'apt'),cu=gv(i,months,'cust'),sa=gv(i,months,'sales'),ro=gav(i,months),cpc=cv>0?co/cv:0,al=le>0?ap/le*100:0,oa=ap>0?cu/ap*100:null;
+        var rows=document.querySelectorAll('#t3body tr.data-row');
+        if(cl===0&&co===0&&le===0&&cv===0){
+          if(rows[i])rows[i].style.display='none';
+          return;
+        }
+        if(rows[i])rows[i].style.display='';
+        visRows++;
         ro=ro*100;
         se('t3r'+i+'_clicks',fmt(cl));se('t3r'+i+'_cost',mn(co));se('t3r'+i+'_conv',fmt(cv));se('t3r'+i+'_cpc',cpc>0?'$'+fmt(cpc):'—');
         se('t3r'+i+'_leads',fmt(le));se('t3r'+i+'_apt',fmt(ap));se('t3r'+i+'_cust',fmt(cu));se('t3r'+i+'_sales',mn(sa));
