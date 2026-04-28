@@ -906,23 +906,40 @@ with tab3:
       if(!c||!c.trend||!c.trend[yr])return 0;
       return c.trend[yr][f]?c.trend[yr][f][m]||0:0;
     }}
+    function tvAll(y,f,m){{
+      return TD.reduce(function(s,c){{
+        var yr=String(y);
+        if(!c.trend||!c.trend[yr])return s;
+        return s+(c.trend[yr][f]?c.trend[yr][f][m]||0:0);
+      }},0);
+    }}
     function getMonths(a,b,c,d){{var r=[],mo=a,yr=b;while(yr<d||(yr===d&&mo<=c)){{r.push({{m:mo,y:yr}});mo++;if(mo>11){{mo=0;yr++;}}}}return r;}}
 
     function t3sel(row,name){{
       document.querySelectorAll('#t3body tr').forEach(function(r){{r.classList.remove('sel');}});
-      if(selName===name){{selName=null;document.getElementById('t3cname').textContent='Click a campaign to see trend';if(tc){{tc.destroy();tc=null;}}return;}}
+      if(selName===name){{
+        selName=null;
+        document.getElementById('t3cname').textContent='All Campaigns — Monthly Trend';
+        t3UC();
+        return;
+      }}
       row.classList.add('sel');selName=name;
       document.getElementById('t3cname').textContent=name+' — Monthly Trend';
       t3UC();
     }}
     function t3SM(m,btn){{cm=m;document.querySelectorAll('.mtab').forEach(function(b){{b.classList.remove('active');}});btn.classList.add('active');t3UC();}}
     function t3UC(){{
-      if(!selName)return;
       var months=getMonths(FM,FY,TM,TY);
       var ly=months.map(function(p){{return{{m:p.m,y:p.y-1}};}});
       var labels=months.map(function(p){{return MN[p.m]+' '+p.y;}});
-      var tyd=months.map(function(p){{return tv(selName,p.y,cm,p.m);}});
-      var lyd=ly.map(function(p){{return tv(selName,p.y,cm,p.m);}});
+      var tyd,lyd;
+      if(selName){{
+        tyd=months.map(function(p){{return tv(selName,p.y,cm,p.m);}});
+        lyd=ly.map(function(p){{return tv(selName,p.y,cm,p.m);}});
+      }}else{{
+        tyd=months.map(function(p){{return tvAll(p.y,cm,p.m);}});
+        lyd=ly.map(function(p){{return tvAll(p.y,cm,p.m);}});
+      }}
       document.getElementById('t3lty').textContent=FY+'–'+TY;
       document.getElementById('t3lly').textContent=(FY-1)+'–'+(TY-1);
       if(tc)tc.destroy();
@@ -931,6 +948,8 @@ with tab3:
         {{data:lyd,borderColor:'#B5D4F4',backgroundColor:'#B5D4F422',fill:true,tension:0.3,pointRadius:4,borderDash:[5,4]}}
       ]}},options:{{responsive:true,maintainAspectRatio:false,plugins:{{legend:{{display:false}}}},scales:{{x:{{ticks:{{font:{{size:10}},maxRotation:45}},grid:{{display:false}}}},y:{{ticks:{{font:{{size:10}}}},grid:{{color:'#f3f4f6'}}}}}}}}}});
     }}
+    // Show all campaigns on load
+    t3UC();
     </script>
     """
     st.components.v1.html(tab3_html, height=len(filtered)*36+680, scrolling=False)
