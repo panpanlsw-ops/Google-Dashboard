@@ -13,6 +13,7 @@ CAMPAIGNS_BASE = {
     "all": "All campaigns",
 }
 
+@st.cache_data(ttl=300)
 def get_campaigns():
     """Load only active campaigns (non-zero TY Cost or TY Leads) from Tab1_KPI sheet."""
     try:
@@ -60,6 +61,7 @@ def _norm(name):
 
 
 # ── Tab 1: KPI Cards ──────────────────────────────────────────────────────────
+@st.cache_data(ttl=300)
 def get_data(campaign: str) -> dict:
     """
     Reads KPI numbers from Tab1_KPI sheet.
@@ -129,6 +131,7 @@ def get_data(campaign: str) -> dict:
 
 
 # ── Tab 1: ROI Charts ─────────────────────────────────────────────────────────
+@st.cache_data(ttl=300)
 def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
     """Reads MTD comparison from Tab1_KPI, monthly trend from Tab3_Campaign."""
     df = pd.read_excel(_excel_path(), sheet_name="Tab1_KPI", header=4)
@@ -204,6 +207,7 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
 
 
 # ── Tab 2: Regional Offices ───────────────────────────────────────────────────
+@st.cache_data(ttl=300)
 def get_regional_data(start_date: date, end_date: date) -> list:
     df = pd.read_excel(_excel_path(), sheet_name="Tab2_Regional", header=3)
     # Rename using actual column names
