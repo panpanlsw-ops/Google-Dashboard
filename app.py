@@ -781,7 +781,7 @@ with tab3:
     const TD=""" + camp_json + """;
     var fm=0,fy=2025,tm=3,ty=2026,ci=-1,cm='clicks',tc=null;
     function getMonths(a,b,c,d){var r=[],mo=a,yr=b;while(yr<d||(yr===d&&mo<=c)){r.push({m:mo,y:yr});mo++;if(mo>11){mo=0;yr++;}}return r;}
-    function tv(i,y,f,m){var yr=String(y);return(TD[i]&&TD[i].trend&&TD[i].trend[yr]&&TD[i].trend[yr][f]&&TD[i].trend[yr][f][m])||0;}
+    function tv(i,y,f,m){var yr=String(y);return(TD[i]&&TD[i].trend&&TD[i].trend[yr]&&TD[i].trend[yr][f]&&typeof TD[i].trend[yr][f][m]!=='undefined'?TD[i].trend[yr][f][m]:0);}
     function gv(i,months,f){return months.reduce(function(s,p){return s+tv(i,p.y,f,p.m);},0);}
     function gav(i,months){var vl=months.filter(function(p){return tv(i,p.y,'clicks',p.m)>0;});if(!vl.length)return 0;return vl.reduce(function(s,p){return s+tv(i,p.y,'roi',p.m);},0)/vl.length;}
     function rb(v){return v>=0?'<span class="rp">'+v.toFixed(1)+'%</span>':'<span class="rn">'+v.toFixed(1)+'%</span>';}

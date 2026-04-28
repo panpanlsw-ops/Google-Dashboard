@@ -21,7 +21,7 @@ def get_campaigns():
         df = pd.read_excel(_excel_path(), sheet_name="Tab1_KPI", header=4)
         campaigns = {}
         for _, row in df.iterrows():
-            name = str(row.iloc[0]).strip()
+            name = _norm(str(row.iloc[0]))
             if not name or name in ["nan", "Yellow=TY"]:
                 continue
             # Check if campaign has any data — TY Cost (col 2) or TY Leads (col 5)
@@ -50,6 +50,15 @@ def _sv(val):
     except:
         return 0.0
 
+def _norm(name):
+    """Normalize campaign name: fix encoding issues and standardize dashes."""
+    if not isinstance(name, str):
+        return str(name)
+    # Fix em/en dash to regular hyphen
+    name = name.replace("–", "-").replace("—", "-")
+    name = name.strip()
+    return name
+
 
 # ── Tab 1: KPI Cards ──────────────────────────────────────────────────────────
 @st.cache_data(ttl=300)
@@ -75,10 +84,11 @@ def get_data(campaign: str) -> dict:
     df = df.dropna(subset=["campaign"])
 
     # Match campaign by name directly (campaign param is the full name or key)
-    rows = df[df["campaign"].astype(str).str.strip() == campaign]
+    df["campaign"] = df["campaign"].astype(str).apply(_norm)
+    camp_norm = _norm(campaign)
+    rows = df[df["campaign"] == camp_norm]
     if rows.empty:
-        # Try partial match
-        rows = df[df["campaign"].astype(str).str.contains(campaign[:15], case=False, na=False)]
+        rows = df[df["campaign"].str.contains(camp_norm[:15], case=False, na=False)]
     if rows.empty:
         rows = df[df["campaign"].astype(str).str.contains("All", case=False, na=False)]
     if rows.empty:
@@ -142,10 +152,12 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
     camp_keys = list(CAMPAIGNS.keys())
     camp_names = list(CAMPAIGNS.values())
 
+    df["campaign"] = df["campaign"].astype(str).apply(_norm)
     def get_row(key):
-        rows = df[df["campaign"].astype(str).str.strip() == key]
+        key_norm = _norm(key)
+        rows = df[df["campaign"] == key_norm]
         if rows.empty:
-            rows = df[df["campaign"].astype(str).str.contains(key[:15] if len(key)>3 else "All", case=False, na=False)]
+            rows = df[df["campaign"].str.contains(key_norm[:15] if len(key_norm)>3 else "All", case=False, na=False)]
         if rows.empty: rows = df.head(1)
         return rows.iloc[0]
 
@@ -248,7 +260,8 @@ def get_campaign_data() -> list:
     }
     df = df.rename(columns={c: col_map3[c] for c in df.columns if c in col_map3})
     df = df.dropna(subset=["campaign"])
-    df = df[~df["campaign"].astype(str).str.contains("campaign|row|update", case=False, na=False)]
+    df["campaign"] = df["campaign"].astype(str).apply(_norm)
+    df = df[~df["campaign"].str.contains("campaign|row|update", case=False, na=False)]
 
     MONTH_MAP = {"Jan":0,"Feb":1,"Mar":2,"Apr":3,"May":4,"Jun":5,
                  "Jul":6,"Aug":7,"Sep":8,"Oct":9,"Nov":10,"Dec":11}
@@ -259,7 +272,7 @@ def get_campaign_data() -> list:
         rows = df[df["campaign"] == camp]
         trend = {}
         for _, row in rows.iterrows():
-            try: yr = int(float(row["year"]))
+            try: yr = str(int(float(row["year"])))  # string key for JS
             except: continue
             mo  = str(row["month"]).strip()
             idx = MONTH_MAP.get(mo, 0)
