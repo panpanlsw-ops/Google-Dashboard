@@ -829,8 +829,66 @@ with tab3:
         return'<span style="background:'+bg+';color:'+col+';padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;">'+fmt(val)+(suffix||'')+'</span>';
       }
 
-      // Reorder rows and update values
+      // ── Summary rows ─────────────────────────────────────────────────────────
+      function isPmax(name){
+        var n=name.toLowerCase();
+        return n.indexOf('performance max')>-1||n.indexOf('pmax')>-1;
+      }
+      function isBrand(name){
+        var n=name.toLowerCase();
+        return n.indexOf('brand')>-1||n.indexOf('lifesource brand')>-1;
+      }
+
+      var totals={cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};
+      var pmax  ={cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};
+      var brand ={cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};
+
+      campMetrics.forEach(function(m){
+        if(!m.active)return;
+        var name=TD[m.i]?TD[m.i].name:'';
+        totals.cl+=m.cl;totals.co+=m.co;totals.cv+=m.cv;totals.le+=m.le;totals.ap+=m.ap;totals.cu+=m.cu;totals.sa+=m.sa;
+        if(isPmax(name)){pmax.cl+=m.cl;pmax.co+=m.co;pmax.cv+=m.cv;pmax.le+=m.le;pmax.ap+=m.ap;pmax.cu+=m.cu;pmax.sa+=m.sa;}
+        if(isBrand(name)){brand.cl+=m.cl;brand.co+=m.co;brand.cv+=m.cv;brand.le+=m.le;brand.ap+=m.ap;brand.cu+=m.cu;brand.sa+=m.sa;}
+      });
+
+      var search={cl:totals.cl-pmax.cl,co:totals.co-pmax.co,cv:totals.cv-pmax.cv,le:totals.le-pmax.le,ap:totals.ap-pmax.ap,cu:totals.cu-pmax.cu,sa:totals.sa-pmax.sa};
+      var searchNoBrand={cl:search.cl-brand.cl,co:search.co-brand.co,cv:search.cv-brand.cv,le:search.le-brand.le,ap:search.ap-brand.ap,cu:search.cu-brand.cu,sa:search.sa-brand.sa};
+
+      function summaryRow(label, d, bg){
+        var cpc=d.cv>0?'$'+fmt(d.co/d.cv):'—';
+        var al=d.le>0?fmt(d.ap/d.le*100)+'%':'—';
+        var oa=d.ap>0?fmt(d.cu/d.ap*100)+'%':'—';
+        return '<tr style="background:'+bg+';font-weight:700;border-top:2px solid #e5e7eb;">'+
+          '<td style="padding:7px 8px;color:#111827;font-size:12px;">'+label+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+fmt(d.cl)+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+mn(d.co)+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+fmt(d.cv)+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+cpc+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+fmt(d.le)+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+fmt(d.ap)+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+fmt(d.cu)+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+mn(d.sa)+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">—</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+al+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+oa+'</td>'+
+          '</tr>';
+      }
+
+      var summaryHtml =
+        summaryRow('🔵 PMax Total', pmax, '#EFF6FF') +
+        summaryRow('🟢 All Search (excl. PMax)', search, '#F0FDF4') +
+        summaryRow('🟡 Search without Brand', searchNoBrand, '#FEFCE8');
+
+      // Insert summary rows at top of tbody
+      var existingSummary=document.getElementById('t3summary');
+      if(existingSummary)existingSummary.remove();
+      var summDiv=document.createElement('tbody');
+      summDiv.id='t3summary';
+      summDiv.innerHTML=summaryHtml;
       var tbody=document.getElementById('t3body');
+      tbody.parentNode.insertBefore(summDiv, tbody);
+
+      // Reorder rows and update values
       var rows=Array.from(tbody.querySelectorAll('tr.data-row'));
       campMetrics.forEach(function(m){
         var row=rows[m.i];
