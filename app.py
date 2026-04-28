@@ -794,80 +794,89 @@ with tab3:
       fm=parseInt(document.getElementById('t3fm').value);fy=parseInt(document.getElementById('t3fy').value);
       tm=parseInt(document.getElementById('t3tm').value);ty=parseInt(document.getElementById('t3ty').value);
       var months=getMonths(fm,fy,tm,ty);
-      var fromStr=MN[fm]+' '+fy;
-      var toStr=MN[tm]+' '+ty;
-      var badgeText = fromStr+' - '+toStr;
-      document.getElementById('t3badge').textContent=badgeText;
-      // Build metrics array
-      var campMetrics=[];
+      var fromStr=MN[fm]+' '+fy;var toStr=MN[tm]+' '+ty;
+      document.getElementById('t3badge').textContent=fromStr+' - '+toStr;
+
+      // Step 1: Calculate metrics for each campaign
+      var campData=[];
       TD.forEach(function(c,i){
-        var cl=gv(i,months,'clicks'),co=gv(i,months,'cost'),cv=gv(i,months,'conv'),le=gv(i,months,'leads'),ap=gv(i,months,'apt'),cu=gv(i,months,'cust'),sa=gv(i,months,'sales'),ro=gav(i,months)*100,cpc=cv>0?co/cv:0,al=le>0?ap/le*100:0,oa=ap>0?cu/ap*100:null;
-        var active=!(cl===0&&co===0&&le===0&&cv===0);
-        campMetrics.push({i:i,cl:cl,co:co,cv:cv,le:le,ap:ap,cu:cu,sa:sa,ro:ro,cpc:cpc,al:al,oa:oa,active:active});
+        var cl=gv(i,months,'clicks'),co=gv(i,months,'cost'),cv=gv(i,months,'conv'),
+            le=gv(i,months,'leads'),ap=gv(i,months,'apt'),cu=gv(i,months,'cust'),
+            sa=gv(i,months,'sales');
+        var hasData=cl>0||co>0||le>0||cv>0||sa>0;
+        campData.push({i:i,name:TD[i].name,cl:cl,co:co,cv:cv,le:le,ap:ap,cu:cu,sa:sa,hasData:hasData});
       });
 
-      // Sort by Sales desc, then ROI desc
-      campMetrics.sort(function(a,b){
-        if(!a.active && b.active) return 1;
-        if(a.active && !b.active) return -1;
-        if(b.sa !== a.sa) return b.sa - a.sa;
-        return b.ro - a.ro;
+      // Step 2: Only active (hasData) campaigns
+      var active=campData.filter(function(m){return m.hasData;});
+
+      // Step 3: Sort active by Sales desc, then ROI desc
+      active.sort(function(a,b){
+        if(b.sa!==a.sa)return b.sa-a.sa;
+        var ra=a.co>0?(a.sa-a.co)/a.co:0, rb2=b.co>0?(b.sa-b.co)/b.co:0;
+        return rb2-ra;
       });
 
-      // Calc averages for active campaigns
-      var active=campMetrics.filter(function(m){return m.active;});
-      var avgRo=active.length?active.reduce(function(s,m){return s+m.ro;},0)/active.length:0;
-      var avgAl=active.filter(function(m){return m.al>0;});
-      avgAl=avgAl.length?avgAl.reduce(function(s,m){return s+m.al;},0)/avgAl.length:0;
-      var avgOa=active.filter(function(m){return m.oa!==null&&m.oa>0;});
-      avgOa=avgOa.length?avgOa.reduce(function(s,m){return s+m.oa;},0)/avgOa.length:0;
-
-      function colored(val, avg, suffix){
-        if(val===null||!isFinite(val))return'#DIV/0!';
-        var col=val>=avg?'#065f46':'#991b1b';
-        var bg=val>=avg?'#d1fae5':'#fee2e2';
-        return'<span style="background:'+bg+';color:'+col+';padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;">'+fmt(val)+(suffix||'')+'</span>';
-      }
-
-      // ── Summary rows ─────────────────────────────────────────────────────────
-      function isPmax(name){
-        var n=name.toLowerCase();
-        return n.indexOf('performance max')>-1||n.indexOf('pmax')>-1;
-      }
-      function isBrand(name){
-        var n=name.toLowerCase();
-        return n.indexOf('brand')>-1||n.indexOf('lifesource brand')>-1;
-      }
-
-      // Only count campaigns with actual data for selected period
-      var totals={cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};
-      var pmax  ={cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};
-      var brand ={cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};
-
-      campMetrics.forEach(function(m){
-        if(!m.active)return;  // skip zero-data campaigns
-        var name=TD[m.i]?TD[m.i].name:'';
-        totals.cl+=m.cl;totals.co+=m.co;totals.cv+=m.cv;totals.le+=m.le;totals.ap+=m.ap;totals.cu+=m.cu;totals.sa+=m.sa;
-        if(isPmax(name)){pmax.cl+=m.cl;pmax.co+=m.co;pmax.cv+=m.cv;pmax.le+=m.le;pmax.ap+=m.ap;pmax.cu+=m.cu;pmax.sa+=m.sa;}
-        if(isBrand(name)&&!isPmax(name)){brand.cl+=m.cl;brand.co+=m.co;brand.cv+=m.cv;brand.le+=m.le;brand.ap+=m.ap;brand.cu+=m.cu;brand.sa+=m.sa;}
+      // Step 4: Calc averages for coloring
+      var avgAl=0,avgOa=0,nAl=0,nOa=0;
+      active.forEach(function(m){
+        if(m.le>0){avgAl+=m.ap/m.le*100;nAl++;}
+        if(m.ap>0){avgOa+=m.cu/m.ap*100;nOa++;}
       });
-      
-      // Only show PMax row if pmax has data
-      var hasPmax=pmax.co>0||pmax.cl>0;
+      avgAl=nAl>0?avgAl/nAl:0; avgOa=nOa>0?avgOa/nOa:0;
 
-      var search={cl:totals.cl-pmax.cl,co:totals.co-pmax.co,cv:totals.cv-pmax.cv,le:totals.le-pmax.le,ap:totals.ap-pmax.ap,cu:totals.cu-pmax.cu,sa:totals.sa-pmax.sa};
-      var searchNoBrand={cl:search.cl-brand.cl,co:search.co-brand.co,cv:search.cv-brand.cv,le:search.le-brand.le,ap:search.ap-brand.ap,cu:search.cu-brand.cu,sa:search.sa-brand.sa};
+      // Step 5: Identify PMax and Brand
+      function isPmax(n){var l=n.toLowerCase();return l.indexOf('performance max')>-1||l.indexOf('pmax')>-1;}
+      function isBrand(n){var l=n.toLowerCase();return l.indexOf('brand')>-1;}
 
-      function roiCalc(d){
-        return d.co>0?fmt((d.sa-d.co)/d.co*100)+'%':'—';
+      // Step 6: Summary totals (only from active campaigns)
+      function zero(){return{cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};}
+      var tot=zero(),pmax=zero(),brand=zero();
+      active.forEach(function(m){
+        ['cl','co','cv','le','ap','cu','sa'].forEach(function(f){tot[f]+=m[f];});
+        if(isPmax(m.name)){['cl','co','cv','le','ap','cu','sa'].forEach(function(f){pmax[f]+=m[f];});}
+        if(isBrand(m.name)&&!isPmax(m.name)){['cl','co','cv','le','ap','cu','sa'].forEach(function(f){brand[f]+=m[f];});}
+      });
+      var search={cl:tot.cl-pmax.cl,co:tot.co-pmax.co,cv:tot.cv-pmax.cv,le:tot.le-pmax.le,ap:tot.ap-pmax.ap,cu:tot.cu-pmax.cu,sa:tot.sa-pmax.sa};
+      var snb={cl:search.cl-brand.cl,co:search.co-brand.co,cv:search.cv-brand.cv,le:search.le-brand.le,ap:search.ap-brand.ap,cu:search.cu-brand.cu,sa:search.sa-brand.sa};
+
+      // Step 7: Hide ALL rows first, then show only active in sorted order
+      var tbody=document.getElementById('t3body');
+      var allRows=Array.from(tbody.querySelectorAll('tr.data-row'));
+      allRows.forEach(function(r){r.style.display='none';});
+
+      function colored(val,avg){
+        if(!isFinite(val))return'—';
+        var col=val>=avg?'#065f46':'#991b1b',bg=val>=avg?'#d1fae5':'#fee2e2';
+        return'<span style="background:'+bg+';color:'+col+';padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;">'+fmt(val)+'%</span>';
       }
-      function summaryRow(label, d, bg){
+
+      active.forEach(function(m){
+        var row=allRows[m.i];
+        if(!row)return;
+        tbody.appendChild(row);
+        row.style.display='';
+        var cpc=m.cv>0?'$'+fmt(m.co/m.cv):'—';
+        var al=m.le>0?m.ap/m.le*100:0;
+        var oa=m.ap>0?m.cu/m.ap*100:null;
+        var roi=m.co>0?(m.sa-m.co)/m.co*100:0;
+        se('t3r'+m.i+'_clicks',fmt(m.cl));se('t3r'+m.i+'_cost',mn(m.co));
+        se('t3r'+m.i+'_conv',fmt(m.cv));se('t3r'+m.i+'_cpc',cpc);
+        se('t3r'+m.i+'_leads',fmt(m.le));se('t3r'+m.i+'_apt',fmt(m.ap));
+        se('t3r'+m.i+'_cust',fmt(m.cu));se('t3r'+m.i+'_sales',mn(m.sa));
+        se('t3r'+m.i+'_roi',colored(roi,0));
+        se('t3r'+m.i+'_al',colored(al,avgAl));
+        se('t3r'+m.i+'_oa',oa!==null?colored(oa,avgOa):'#DIV/0!');
+      });
+
+      // Step 8: Build summary rows
+      function summRow(label,d,bg){
         var cpc=d.cv>0?'$'+fmt(d.co/d.cv):'—';
+        var roi=d.co>0?fmt((d.sa-d.co)/d.co*100)+'%':'—';
         var al=d.le>0?fmt(d.ap/d.le*100)+'%':'—';
         var oa=d.ap>0?fmt(d.cu/d.ap*100)+'%':'—';
-        var roi=roiCalc(d);
-        return '<tr style="background:'+bg+';font-weight:700;">'+
-          '<td style="padding:7px 8px;color:#111827;font-size:12px;">'+label+'</td>'+
+        return'<tr style="background:'+bg+';font-weight:700;">'+
+          '<td style="padding:7px 8px;font-size:12px;">'+label+'</td>'+
           '<td style="text-align:right;padding:7px 8px;">'+fmt(d.cl)+'</td>'+
           '<td style="text-align:right;padding:7px 8px;">'+mn(d.co)+'</td>'+
           '<td style="text-align:right;padding:7px 8px;">'+fmt(d.cv)+'</td>'+
@@ -882,56 +891,32 @@ with tab3:
           '</tr>';
       }
 
-      var summaryHtml = (hasPmax?summaryRow('🔵 PMax Total', pmax, '#EFF6FF'):'') +
-        summaryRow('🟢 All Search (excl. PMax)', search, '#F0FDF4') +
-        summaryRow('🟡 Search without Brand', searchNoBrand, '#FEFCE8');
+      var totRoi=tot.co>0?fmt((tot.sa-tot.co)/tot.co*100)+'%':'—';
+      var totAl=tot.le>0?fmt(tot.ap/tot.le*100)+'%':'—';
+      var totOa=tot.ap>0?fmt(tot.cu/tot.ap*100)+'%':'—';
+      var totCpc=tot.cv>0?'$'+fmt(tot.co/tot.cv):'—';
 
-      // Add summary rows to tfoot (after Total row)
-      var tbody=document.getElementById('t3body');
-
-      // Reorder rows and update values
-      var rows=Array.from(tbody.querySelectorAll('tr.data-row'));
-      campMetrics.forEach(function(m){
-        var row=rows[m.i];
-        if(!row)return;
-        tbody.appendChild(row);
-        if(!m.active){row.style.display='none';return;}
-        row.style.display='';
-        se('t3r'+m.i+'_clicks',fmt(m.cl));
-        se('t3r'+m.i+'_cost',mn(m.co));
-        se('t3r'+m.i+'_conv',fmt(m.cv));
-        se('t3r'+m.i+'_cpc',m.cpc>0?'$'+fmt(m.cpc):'—');
-        se('t3r'+m.i+'_leads',fmt(m.le));
-        se('t3r'+m.i+'_apt',fmt(m.ap));
-        se('t3r'+m.i+'_cust',fmt(m.cu));
-        se('t3r'+m.i+'_sales',mn(m.sa));
-        se('t3r'+m.i+'_roi',colored(m.ro, avgRo, '%'));
-        se('t3r'+m.i+'_al',colored(m.al, avgAl, '%'));
-        se('t3r'+m.i+'_oa',m.oa!==null?colored(m.oa, avgOa, '%'):'#DIV/0!');
-      });
-      var tot={cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};
-      TD.forEach(function(_,i){tot.cl+=gv(i,months,'clicks');tot.co+=gv(i,months,'cost');tot.cv+=gv(i,months,'conv');tot.le+=gv(i,months,'leads');tot.ap+=gv(i,months,'apt');tot.cu+=gv(i,months,'cust');tot.sa+=gv(i,months,'sales');});
-      var ar=TD.reduce(function(s,_,i){return s+gav(i,months);},0)/TD.length;
-      ar=ar*100;
-      var tot_cpc=tot.cv>0?'$'+fmt(tot.co/tot.cv):'—';
-      var tot_roi=tot.co>0?fmt((tot.sa-tot.co)/tot.co*100)+'%':'—';
-      var tot_al=tot.le>0?fmt(tot.ap/tot.le*100)+'%':'—';
-      var tot_oa=tot.ap>0?fmt(tot.cu/tot.ap*100)+'%':'—';
-      document.getElementById('t3foot').innerHTML=
-        '<tr style="background:#f8f9fa;font-weight:700;border-top:2px solid #e5e7eb;">'+
+      var footHtml=
+        '<tr style="background:#f8f9fa;font-weight:700;border-top:2px solid #374151;">'+
         '<td style="padding:8px 8px;">Total</td>'+
         '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.cl)+'</td>'+
         '<td style="text-align:right;padding:8px 8px;">'+mn(tot.co)+'</td>'+
         '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.cv)+'</td>'+
-        '<td style="text-align:right;padding:8px 8px;">'+tot_cpc+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+totCpc+'</td>'+
         '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.le)+'</td>'+
         '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.ap)+'</td>'+
         '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.cu)+'</td>'+
         '<td style="text-align:right;padding:8px 8px;">'+mn(tot.sa)+'</td>'+
-        '<td style="text-align:right;padding:8px 8px;">'+tot_roi+'</td>'+
-        '<td style="text-align:right;padding:8px 8px;">'+tot_al+'</td>'+
-        '<td style="text-align:right;padding:8px 8px;">'+tot_oa+'</td>'+
-        '</tr>'+summaryHtml;
+        '<td style="text-align:right;padding:8px 8px;">'+totRoi+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+totAl+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+totOa+'</td>'+
+        '</tr>';
+
+      if(pmax.co>0||pmax.cl>0) footHtml+=summRow('🔵 PMax Total',pmax,'#EFF6FF');
+      footHtml+=summRow('🟢 All Search (excl. PMax)',search,'#F0FDF4');
+      footHtml+=summRow('🟡 Search without Brand',snb,'#FEFCE8');
+
+      document.getElementById('t3foot').innerHTML=footHtml;
       t3UC();
     }
     function t3Select(row,idx){
