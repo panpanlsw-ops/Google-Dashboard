@@ -836,7 +836,7 @@ with tab3:
       var lyDatasets=(fy-1)>=2025?[{data:lyd,borderColor:'#B5D4F4',backgroundColor:'#B5D4F422',fill:true,tension:0.3,pointRadius:4,borderDash:[5,4]}]:[];
       tc=new Chart(document.getElementById('t3chart'),{type:'line',data:{labels:labels,datasets:[{data:tyd,borderColor:'#378ADD',backgroundColor:'#378ADD22',fill:true,tension:0.3,pointRadius:4}].concat(lyDatasets)},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return isR?' '+ctx.parsed.y+'%':' '+ctx.parsed.y.toLocaleString();}}}},scales:{x:{ticks:{font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:16},grid:{display:false}},y:{ticks:{font:{size:10},callback:function(v){return isR?v+'%':v.toLocaleString();}},grid:{color:'#f3f4f6'}}}}});
     }
-    t3Apply();
+    setTimeout(function(){t3Apply();}, 100);
     </script>
     """
     st.components.v1.html(tab3_html, height=len(camp_data)*36+720, scrolling=False)
