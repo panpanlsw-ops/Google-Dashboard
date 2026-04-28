@@ -838,9 +838,28 @@ with tab3:
           <td style="{td_style}">{fmt2(r['oa'])}%</td>
         </tr>"""
 
-    rows_html = "".join([data_row(x, "#fefce8" if i%5==1 else "") for i,x in enumerate(filtered)])
+    # Total row at top - clickable
+    tot_roi_val = (tot["sales"]-tot["cost"])/tot["cost"]*100 if tot["cost"]>0 else 0
+    tot_al_val  = tot["apt"]/tot["leads"]*100 if tot["leads"]>0 else 0
+    tot_oa_val  = tot["cust"]/tot["apt"]*100  if tot["apt"]>0  else 0
+    tot_cpc_val = tot["cost"]/tot["conv"]     if tot["conv"]>0 else 0
+    total_click_row = f'''<tr style="background:#111827;color:#fff;font-weight:700;cursor:pointer;" onclick="t3sel(this,'__total__')">
+      <td style="text-align:left;padding:7px 8px;font-size:12px;color:#fff;">📊 Total (All Active)</td>
+      <td style="text-align:right;padding:7px 8px;">{fmt2(tot["clicks"])}</td>
+      <td style="text-align:right;padding:7px 8px;">{money(tot["cost"])}</td>
+      <td style="text-align:right;padding:7px 8px;">{fmt2(tot["conv"])}</td>
+      <td style="text-align:right;padding:7px 8px;">{"$"+fmt2(tot_cpc_val) if tot_cpc_val>0 else "—"}</td>
+      <td style="text-align:right;padding:7px 8px;">{fmt2(tot["leads"])}</td>
+      <td style="text-align:right;padding:7px 8px;">{fmt2(tot["apt"])}</td>
+      <td style="text-align:right;padding:7px 8px;">{fmt2(tot["cust"])}</td>
+      <td style="text-align:right;padding:7px 8px;">{money(tot["sales"])}</td>
+      <td style="text-align:right;padding:7px 8px;">{fmt2(tot_roi_val)}%</td>
+      <td style="text-align:right;padding:7px 8px;">{fmt2(tot_al_val)}%</td>
+      <td style="text-align:right;padding:7px 8px;">{fmt2(tot_oa_val)}%</td>
+    </tr>'''
+    rows_html = total_click_row + "".join([data_row(x, "#fefce8" if i%5==1 else "") for i,x in enumerate(filtered)])
 
-    foot_html = summary_row("Total", tot, "#f8f9fa")
+    foot_html = ""
     if pmax["cost"]>0 or pmax["clicks"]>0:
         foot_html += summary_row("🔵 PMax Total", pmax, "#EFF6FF")
     foot_html += summary_row("🟢 All Search (excl. PMax)", srch, "#F0FDF4")
@@ -919,14 +938,9 @@ with tab3:
 
     function t3sel(row,name){{
       document.querySelectorAll('#t3body tr').forEach(function(r){{r.classList.remove('sel');}});
-      if(selName===name){{
-        selName=null;
-        document.getElementById('t3cname').textContent='All Campaigns — Monthly Trend';
-        t3UC();
-        return;
-      }}
+      if(selName===name){{selName=null;t3UC();return;}}
       row.classList.add('sel');selName=name;
-      document.getElementById('t3cname').textContent=name+' — Monthly Trend';
+      document.getElementById('t3cname').textContent=(name==='__total__'?'Total (All Active)':name)+' — Monthly Trend';
       t3UC();
     }}
     function t3SM(m,btn){{cm=m;document.querySelectorAll('.mtab').forEach(function(b){{b.classList.remove('active');}});btn.classList.add('active');t3UC();}}
@@ -935,7 +949,7 @@ with tab3:
       var ly=months.map(function(p){{return{{m:p.m,y:p.y-1}};}});
       var labels=months.map(function(p){{return MN[p.m]+' '+p.y;}});
       var tyd,lyd;
-      if(selName){{
+      if(selName&&selName!=='__total__'){{
         tyd=months.map(function(p){{return tv(selName,p.y,cm,p.m);}});
         lyd=ly.map(function(p){{return tv(selName,p.y,cm,p.m);}});
       }}else{{
