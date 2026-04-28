@@ -13,6 +13,13 @@ with st.sidebar:
         st.cache_data.clear()
         st.rerun()
     st.caption("Click after uploading new Excel to GitHub")
+    # Show last modified time of Excel
+    import os
+    excel_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard_data.xlsx")
+    if os.path.exists(excel_path):
+        import datetime
+        mtime = os.path.getmtime(excel_path)
+        st.caption(f"Excel last updated: {datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')}")
 
 # Load campaigns dynamically from Excel
 try:
@@ -716,8 +723,13 @@ with tab2:
 # TAB 3 — Campaign Performance
 # ══════════════════════════════════════════════════════════════════════════════
 with tab3:
+    import json, hashlib, os
+    # Force cache bust when Excel file changes
+    try:
+        _mtime = str(os.path.getmtime(_excel_path()))
+    except:
+        _mtime = "0"
     camp_data = get_campaign_data()
-    import json
     camp_json = json.dumps([{"name": c["name"], "trend": c["trend"]} for c in camp_data])
     camp_rows = ""
     for i, c in enumerate(camp_data):
@@ -774,6 +786,7 @@ with tab3:
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script>
+    // v20260428222257
     const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const TD=""" + camp_json + """;
     var fm=0,fy=2025,tm=3,ty=2026,ci=-1,cm='clicks',tc=null;
@@ -783,7 +796,12 @@ with tab3:
     function mn(n){return n>0?'$'+fmt(n):'$0';}
     function se(id,v){var el=document.getElementById(id);if(el)el.innerHTML=v;}
     function getMonths(a,b,c,d){var r=[],mo=a,yr=b;while(yr<d||(yr===d&&mo<=c)){r.push({m:mo,y:yr});mo++;if(mo>11){mo=0;yr++;}}return r;}
-    function tv(i,y,f,m){var yr=String(y);return(TD[i]&&TD[i].trend&&TD[i].trend[yr]&&TD[i].trend[yr][f]&&typeof TD[i].trend[yr][f][m]!=='undefined'?TD[i].trend[yr][f][m]:0);}
+    function tv(i,y,f,m){
+      var yr=String(y);
+      if(!TD[i]||!TD[i].trend||!TD[i].trend[yr])return 0;
+      var val=TD[i].trend[yr][f]?TD[i].trend[yr][f][m]:0;
+      return val||0;
+    }
     function gv(i,months,f){return months.reduce(function(s,p){return s+tv(i,p.y,f,p.m);},0);}
     function gav(i,months){var vl=months.filter(function(p){return tv(i,p.y,'clicks',p.m)>0;});if(!vl.length)return 0;return vl.reduce(function(s,p){return s+tv(i,p.y,'roi',p.m);},0)/vl.length;}
     function rb(v){return v>=0?'<span class="rp">'+v.toFixed(1)+'%</span>':'<span class="rn">'+v.toFixed(1)+'%</span>';}
@@ -794,68 +812,130 @@ with tab3:
       fm=parseInt(document.getElementById('t3fm').value);fy=parseInt(document.getElementById('t3fy').value);
       tm=parseInt(document.getElementById('t3tm').value);ty=parseInt(document.getElementById('t3ty').value);
       var months=getMonths(fm,fy,tm,ty);
-      var fromStr=MN[fm]+' '+fy;
-      var toStr=MN[tm]+' '+ty;
-      var badgeText = fromStr+' - '+toStr;
-      document.getElementById('t3badge').textContent=badgeText;
-      // Build metrics array
-      var campMetrics=[];
+      var fromStr=MN[fm]+' '+fy;var toStr=MN[tm]+' '+ty;
+      document.getElementById('t3badge').textContent=fromStr+' - '+toStr;
+
+      // Step 1: Calculate metrics for each campaign
+      var campData=[];
       TD.forEach(function(c,i){
-        var cl=gv(i,months,'clicks'),co=gv(i,months,'cost'),cv=gv(i,months,'conv'),le=gv(i,months,'leads'),ap=gv(i,months,'apt'),cu=gv(i,months,'cust'),sa=gv(i,months,'sales'),ro=gav(i,months)*100,cpc=cv>0?co/cv:0,al=le>0?ap/le*100:0,oa=ap>0?cu/ap*100:null;
-        var active=!(cl===0&&co===0&&le===0&&cv===0);
-        campMetrics.push({i:i,cl:cl,co:co,cv:cv,le:le,ap:ap,cu:cu,sa:sa,ro:ro,cpc:cpc,al:al,oa:oa,active:active});
+        var cl=gv(i,months,'clicks'),co=gv(i,months,'cost'),cv=gv(i,months,'conv'),
+            le=gv(i,months,'leads'),ap=gv(i,months,'apt'),cu=gv(i,months,'cust'),
+            sa=gv(i,months,'sales');
+        var hasData=cl>0||co>0||le>0||cv>0||sa>0;
+        campData.push({i:i,name:TD[i].name,cl:cl,co:co,cv:cv,le:le,ap:ap,cu:cu,sa:sa,hasData:hasData});
       });
 
-      // Sort by Sales desc, then ROI desc
-      campMetrics.sort(function(a,b){
-        if(!a.active && b.active) return 1;
-        if(a.active && !b.active) return -1;
-        if(b.sa !== a.sa) return b.sa - a.sa;
-        return b.ro - a.ro;
+      // Step 2: Only active (hasData) campaigns
+      var active=campData.filter(function(m){return m.hasData;});
+      console.log('Total campaigns:',campData.length,'Active:',active.length,'Range:',fy+'-'+ty);
+
+      // Step 3: Sort active by Sales desc, then ROI desc
+      active.sort(function(a,b){
+        if(b.sa!==a.sa)return b.sa-a.sa;
+        var ra=a.co>0?(a.sa-a.co)/a.co:0, rb2=b.co>0?(b.sa-b.co)/b.co:0;
+        return rb2-ra;
       });
 
-      // Calc averages for active campaigns
-      var active=campMetrics.filter(function(m){return m.active;});
-      var avgRo=active.length?active.reduce(function(s,m){return s+m.ro;},0)/active.length:0;
-      var avgAl=active.filter(function(m){return m.al>0;});
-      avgAl=avgAl.length?avgAl.reduce(function(s,m){return s+m.al;},0)/avgAl.length:0;
-      var avgOa=active.filter(function(m){return m.oa!==null&&m.oa>0;});
-      avgOa=avgOa.length?avgOa.reduce(function(s,m){return s+m.oa;},0)/avgOa.length:0;
+      // Step 4: Calc averages for coloring
+      var avgAl=0,avgOa=0,nAl=0,nOa=0;
+      active.forEach(function(m){
+        if(m.le>0){avgAl+=m.ap/m.le*100;nAl++;}
+        if(m.ap>0){avgOa+=m.cu/m.ap*100;nOa++;}
+      });
+      avgAl=nAl>0?avgAl/nAl:0; avgOa=nOa>0?avgOa/nOa:0;
 
-      function colored(val, avg, suffix){
-        if(val===null||!isFinite(val))return'#DIV/0!';
-        var col=val>=avg?'#065f46':'#991b1b';
-        var bg=val>=avg?'#d1fae5':'#fee2e2';
-        return'<span style="background:'+bg+';color:'+col+';padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;">'+fmt(val)+(suffix||'')+'</span>';
+      // Step 5: Identify PMax and Brand
+      function isPmax(n){var l=n.toLowerCase();return l.indexOf('performance max')>-1||l.indexOf('pmax')>-1;}
+      function isBrand(n){var l=n.toLowerCase();return l.indexOf('brand')>-1;}
+
+      // Step 6: Summary totals (only from active campaigns)
+      function zero(){return{cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};}
+      var tot=zero(),pmax=zero(),brand=zero();
+      active.forEach(function(m){
+        ['cl','co','cv','le','ap','cu','sa'].forEach(function(f){tot[f]+=m[f];});
+        if(isPmax(m.name)){['cl','co','cv','le','ap','cu','sa'].forEach(function(f){pmax[f]+=m[f];});}
+        if(isBrand(m.name)&&!isPmax(m.name)){['cl','co','cv','le','ap','cu','sa'].forEach(function(f){brand[f]+=m[f];});}
+      });
+      var search={cl:tot.cl-pmax.cl,co:tot.co-pmax.co,cv:tot.cv-pmax.cv,le:tot.le-pmax.le,ap:tot.ap-pmax.ap,cu:tot.cu-pmax.cu,sa:tot.sa-pmax.sa};
+      var snb={cl:search.cl-brand.cl,co:search.co-brand.co,cv:search.cv-brand.cv,le:search.le-brand.le,ap:search.ap-brand.ap,cu:search.cu-brand.cu,sa:search.sa-brand.sa};
+
+      // Step 7: Hide ALL rows first, then show only active in sorted order
+      var tbody=document.getElementById('t3body');
+      var allRows=Array.from(tbody.querySelectorAll('tr.data-row'));
+      allRows.forEach(function(r){r.style.display='none';});
+
+      function colored(val,avg){
+        if(!isFinite(val))return'—';
+        var col=val>=avg?'#065f46':'#991b1b',bg=val>=avg?'#d1fae5':'#fee2e2';
+        return'<span style="background:'+bg+';color:'+col+';padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;">'+fmt(val)+'%</span>';
       }
 
-      // Reorder rows and update values
-      var tbody=document.getElementById('t3body');
-      var rows=Array.from(tbody.querySelectorAll('tr.data-row'));
-      campMetrics.forEach(function(m){
-        var row=rows[m.i];
+      active.forEach(function(m){
+        var row=allRows[m.i];
         if(!row)return;
         tbody.appendChild(row);
-        if(!m.active){row.style.display='none';return;}
         row.style.display='';
-        se('t3r'+m.i+'_clicks',fmt(m.cl));
-        se('t3r'+m.i+'_cost',mn(m.co));
-        se('t3r'+m.i+'_conv',fmt(m.cv));
-        se('t3r'+m.i+'_cpc',m.cpc>0?'$'+fmt(m.cpc):'—');
-        se('t3r'+m.i+'_leads',fmt(m.le));
-        se('t3r'+m.i+'_apt',fmt(m.ap));
-        se('t3r'+m.i+'_cust',fmt(m.cu));
-        se('t3r'+m.i+'_sales',mn(m.sa));
-        se('t3r'+m.i+'_roi',colored(m.ro, avgRo, '%'));
-        se('t3r'+m.i+'_al',colored(m.al, avgAl, '%'));
-        se('t3r'+m.i+'_oa',m.oa!==null?colored(m.oa, avgOa, '%'):'#DIV/0!');
+        var cpc=m.cv>0?'$'+fmt(m.co/m.cv):'—';
+        var al=m.le>0?m.ap/m.le*100:0;
+        var oa=m.ap>0?m.cu/m.ap*100:null;
+        var roi=m.co>0?(m.sa-m.co)/m.co*100:0;
+        se('t3r'+m.i+'_clicks',fmt(m.cl));se('t3r'+m.i+'_cost',mn(m.co));
+        se('t3r'+m.i+'_conv',fmt(m.cv));se('t3r'+m.i+'_cpc',cpc);
+        se('t3r'+m.i+'_leads',fmt(m.le));se('t3r'+m.i+'_apt',fmt(m.ap));
+        se('t3r'+m.i+'_cust',fmt(m.cu));se('t3r'+m.i+'_sales',mn(m.sa));
+        se('t3r'+m.i+'_roi',colored(roi,0));
+        se('t3r'+m.i+'_al',colored(al,avgAl));
+        se('t3r'+m.i+'_oa',oa!==null?colored(oa,avgOa):'#DIV/0!');
       });
-      var tot={cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};
-      TD.forEach(function(_,i){tot.cl+=gv(i,months,'clicks');tot.co+=gv(i,months,'cost');tot.cv+=gv(i,months,'conv');tot.le+=gv(i,months,'leads');tot.ap+=gv(i,months,'apt');tot.cu+=gv(i,months,'cust');tot.sa+=gv(i,months,'sales');});
-      var ar=TD.reduce(function(s,_,i){return s+gav(i,months);},0)/TD.length;
-      ar=ar*100;
-      var tot_cpc=tot.cv>0?'$'+fmt(tot.co/tot.cv):'—';
-      document.getElementById('t3foot').innerHTML='<tr><td>Total</td><td>'+fmt(tot.cl)+'</td><td>'+mn(tot.co)+'</td><td>'+fmt(tot.cv)+'</td><td>'+tot_cpc+'</td><td>'+fmt(tot.le)+'</td><td>'+fmt(tot.ap)+'</td><td>'+fmt(tot.cu)+'</td><td>'+mn(tot.sa)+'</td><td>'+rb(ar)+'</td><td>'+pb(tot.le>0?tot.ap/tot.le*100:0,30)+'</td><td>'+pb(tot.ap>0?tot.cu/tot.ap*100:0,15)+'</td></tr>';
+
+      // Step 8: Build summary rows
+      function summRow(label,d,bg){
+        var cpc=d.cv>0?'$'+fmt(d.co/d.cv):'—';
+        var roi=d.co>0?fmt((d.sa-d.co)/d.co*100)+'%':'—';
+        var al=d.le>0?fmt(d.ap/d.le*100)+'%':'—';
+        var oa=d.ap>0?fmt(d.cu/d.ap*100)+'%':'—';
+        return'<tr style="background:'+bg+';font-weight:700;">'+
+          '<td style="padding:7px 8px;font-size:12px;">'+label+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+fmt(d.cl)+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+mn(d.co)+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+fmt(d.cv)+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+cpc+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+fmt(d.le)+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+fmt(d.ap)+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+fmt(d.cu)+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+mn(d.sa)+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+roi+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+al+'</td>'+
+          '<td style="text-align:right;padding:7px 8px;">'+oa+'</td>'+
+          '</tr>';
+      }
+
+      var totRoi=tot.co>0?fmt((tot.sa-tot.co)/tot.co*100)+'%':'—';
+      var totAl=tot.le>0?fmt(tot.ap/tot.le*100)+'%':'—';
+      var totOa=tot.ap>0?fmt(tot.cu/tot.ap*100)+'%':'—';
+      var totCpc=tot.cv>0?'$'+fmt(tot.co/tot.cv):'—';
+
+      var footHtml=
+        '<tr style="background:#f8f9fa;font-weight:700;border-top:2px solid #374151;">'+
+        '<td style="padding:8px 8px;">Total</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.cl)+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+mn(tot.co)+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.cv)+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+totCpc+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.le)+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.ap)+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.cu)+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+mn(tot.sa)+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+totRoi+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+totAl+'</td>'+
+        '<td style="text-align:right;padding:8px 8px;">'+totOa+'</td>'+
+        '</tr>';
+
+      if(pmax.co>0||pmax.cl>0) footHtml+=summRow('🔵 PMax Total',pmax,'#EFF6FF');
+      footHtml+=summRow('🟢 All Search (excl. PMax)',search,'#F0FDF4');
+      footHtml+=summRow('🟡 Search without Brand',snb,'#FEFCE8');
+
+      document.getElementById('t3foot').innerHTML=footHtml;
       t3UC();
     }
     function t3Select(row,idx){
