@@ -6,6 +6,13 @@ from data import get_data, get_roi_data, get_regional_data, get_campaign_data, g
 
 st.set_page_config(page_title="Google Daily Report", page_icon="📊", layout="wide")
 
+# Sidebar cache clear
+with st.sidebar:
+    if st.button("🔄 Refresh Data"):
+        st.cache_data.clear()
+        st.rerun()
+    st.caption("Click after uploading new Excel")
+
 # Load campaigns dynamically from Excel
 try:
     CAMPAIGNS = get_campaigns()
@@ -770,8 +777,9 @@ with tab3:
     const TD=""" + camp_json + """;
     var fm=0,fy=2025,tm=3,ty=2026,ci=-1,cm='clicks',tc=null;
     function getMonths(a,b,c,d){var r=[],mo=a,yr=b;while(yr<d||(yr===d&&mo<=c)){r.push({m:mo,y:yr});mo++;if(mo>11){mo=0;yr++;}}return r;}
-    function gv(i,months,f){return months.reduce(function(s,p){return s+((TD[i]&&TD[i].trend&&TD[i].trend[p.y]&&TD[i].trend[p.y][f]&&TD[i].trend[p.y][f][p.m])||0);},0);}
-    function gav(i,months){var vl=months.filter(function(p){return((TD[i]&&TD[i].trend&&TD[i].trend[p.y]&&TD[i].trend[p.y].clicks&&TD[i].trend[p.y].clicks[p.m])||0)>0;});if(!vl.length)return 0;return vl.reduce(function(s,p){return s+((TD[i]&&TD[i].trend&&TD[i].trend[p.y]&&TD[i].trend[p.y].roi&&TD[i].trend[p.y].roi[p.m])||0);},0)/vl.length;}
+    function tv(i,y,f,m){var yr=String(y);return(TD[i]&&TD[i].trend&&TD[i].trend[yr]&&TD[i].trend[yr][f]&&TD[i].trend[yr][f][m])||0;}
+    function gv(i,months,f){return months.reduce(function(s,p){return s+tv(i,p.y,f,p.m);},0);}
+    function gav(i,months){var vl=months.filter(function(p){return tv(i,p.y,'clicks',p.m)>0;});if(!vl.length)return 0;return vl.reduce(function(s,p){return s+tv(i,p.y,'roi',p.m);},0)/vl.length;}
     function rb(v){return v>=0?'<span class="rp">'+v.toFixed(1)+'%</span>':'<span class="rn">'+v.toFixed(1)+'%</span>';}
     function pb(v,t){if(!isFinite(v))return'—';return v>=t?'<span class="pg">'+v.toFixed(1)+'%</span>':'<span class="pr">'+v.toFixed(1)+'%</span>';}
     function mn(n){return n>0?'$'+Math.round(n).toLocaleString():'$0';}
@@ -825,11 +833,11 @@ with tab3:
       var tyd,lyd;
       if(ci<0){
         // All campaigns — sum across all
-        tyd=months.map(function(p){return TD.reduce(function(s,c){return s+((c.trend&&c.trend[p.y]&&c.trend[p.y][cm]&&c.trend[p.y][cm][p.m])||0);},0);});
-        lyd=ly.map(function(p){return TD.reduce(function(s,c){return s+((c.trend&&c.trend[p.y]&&c.trend[p.y][cm]&&c.trend[p.y][cm][p.m])||0);},0);});
+        tyd=months.map(function(p){return TD.reduce(function(s,c,i){return s+tv(i,p.y,cm,p.m);},0);});
+        lyd=ly.map(function(p){return TD.reduce(function(s,c,i){return s+tv(i,p.y,cm,p.m);},0);});
       } else {
-        tyd=months.map(function(p){return(TD[ci]&&TD[ci].trend&&TD[ci].trend[p.y]&&TD[ci].trend[p.y][cm]&&TD[ci].trend[p.y][cm][p.m])||0;});
-        lyd=ly.map(function(p){return(TD[ci]&&TD[ci].trend&&TD[ci].trend[p.y]&&TD[ci].trend[p.y][cm]&&TD[ci].trend[p.y][cm][p.m])||0;});
+        tyd=months.map(function(p){return tv(ci,p.y,cm,p.m);});
+        lyd=ly.map(function(p){return tv(ci,p.y,cm,p.m);});
       }
       var tyy=[...new Set(months.map(function(p){return p.y;}))].join('–');var lyy=[...new Set(ly.map(function(p){return p.y;}))].join('–');
       document.getElementById('t3lty').textContent=fy+'–'+ty;
