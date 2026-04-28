@@ -786,6 +786,7 @@ with tab3:
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script>
+    // v20260428222257
     const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const TD=""" + camp_json + """;
     var fm=0,fy=2025,tm=3,ty=2026,ci=-1,cm='clicks',tc=null;
@@ -826,6 +827,7 @@ with tab3:
 
       // Step 2: Only active (hasData) campaigns
       var active=campData.filter(function(m){return m.hasData;});
+      console.log('Total campaigns:',campData.length,'Active:',active.length,'Range:',fy+'-'+ty);
 
       // Step 3: Sort active by Sales desc, then ROI desc
       active.sort(function(a,b){
