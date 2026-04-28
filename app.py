@@ -242,15 +242,15 @@ with tab1:
         <div style="display:flex;justify-content:space-around;margin-top:10px;padding-top:8px;border-top:0.5px solid #e5e7eb;">
           <div style="text-align:center;">
             <div style="font-size:16px;font-weight:600;color:#1D9E75;">{g_leads_ty:,}</div>
-            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">TY MTD</div>
+            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">This Month MTD</div>
           </div>
           <div style="text-align:center;">
             <div style="font-size:16px;font-weight:600;color:#9FE1CB;">{g_leads_pace:,}</div>
-            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">TY Pace</div>
+            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">Month-end Pace</div>
           </div>
           <div style="text-align:center;">
             <div style="font-size:16px;font-weight:600;color:#BA7517;">{g_leads_lm:,}</div>
-            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">LM Full</div>
+            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">Last Month Full</div>
           </div>
         </div>
       </div>
@@ -270,15 +270,15 @@ with tab1:
         <div style="display:flex;justify-content:space-around;margin-top:10px;padding-top:8px;border-top:0.5px solid #e5e7eb;">
           <div style="text-align:center;">
             <div style="font-size:16px;font-weight:600;color:#1D9E75;">{g_apt_ty:,}</div>
-            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">TY MTD</div>
+            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">This Month MTD</div>
           </div>
           <div style="text-align:center;">
             <div style="font-size:16px;font-weight:600;color:#9FE1CB;">{g_apt_pace:,}</div>
-            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">TY Pace</div>
+            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">Month-end Pace</div>
           </div>
           <div style="text-align:center;">
             <div style="font-size:16px;font-weight:600;color:#BA7517;">{g_apt_lm:,}</div>
-            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">LM Full</div>
+            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">Last Month Full</div>
           </div>
         </div>
       </div>
