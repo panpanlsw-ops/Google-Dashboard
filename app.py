@@ -723,260 +723,214 @@ with tab2:
 # TAB 3 — Campaign Performance
 # ══════════════════════════════════════════════════════════════════════════════
 with tab3:
-    import json, hashlib, os
-    # Force cache bust when Excel file changes
-    try:
-        _mtime = str(os.path.getmtime(_excel_path()))
-    except:
-        _mtime = "0"
+    import json
+    from datetime import date
+
+    # ── Date range selectors (Python/Streamlit) ──────────────────────────────
+    MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    t3c1, t3c2, t3c3, t3c4, t3c5 = st.columns([1,1,0.3,1,1])
+    with t3c1: t3_fm = st.selectbox("From Month", MONTHS, index=0, key="t3fm")
+    with t3c2: t3_fy = st.selectbox("From Year",  [2025,2026], index=0, key="t3fy")
+    with t3c3: st.markdown("<div style='padding-top:28px;text-align:center;color:#6b7280;'>to</div>", unsafe_allow_html=True)
+    with t3c4: t3_tm = st.selectbox("To Month", MONTHS, index=MONTHS.index(today.strftime("%b")), key="t3tm")
+    with t3c5: t3_ty = st.selectbox("To Year",  [2025,2026], index=1, key="t3ty")
+
+    fm_idx = MONTHS.index(t3_fm)
+    tm_idx = MONTHS.index(t3_tm)
+    st.caption(f"{t3_fm} {t3_fy} - {t3_tm} {t3_ty}")
+
+    # ── Load and filter campaign data in Python ───────────────────────────────
     camp_data = get_campaign_data()
-    camp_json = json.dumps([{"name": c["name"], "trend": c["trend"]} for c in camp_data])
-    camp_rows = ""
-    for i, c in enumerate(camp_data):
-        hl = " row-hl" if i % 5 == 1 else ""
-        cells = "".join([f'<td id="t3r{i}_{f}">—</td>' for f in ["clicks","cost","conv","cpc","leads","apt","cust","sales","roi","al","oa"]])
-        camp_rows += f'<tr class="data-row{hl}" onclick="t3Select(this,{i})"><td>{c["name"]}</td>{cells}</tr>'
 
-    MONTH_NAMES_T3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    # Build selected months list
+    sel_months = []
+    yr, mo = t3_fy, fm_idx
+    while yr < t3_ty or (yr == t3_ty and mo <= tm_idx):
+        sel_months.append((yr, mo))
+        mo += 1
+        if mo > 11: mo = 0; yr += 1
 
-    tab3_html = """
+    # Filter and aggregate
+    filtered = []
+    for c in camp_data:
+        totals = {f:0.0 for f in ["clicks","cost","conv","leads","apt","cust","sales"]}
+        for yr, mo in sel_months:
+            yr_str = str(yr)
+            if yr_str in c["trend"]:
+                for f in totals:
+                    totals[f] += c["trend"][yr_str].get(f,[0]*12)[mo]
+        # Only include if has any data
+        if totals["cost"] > 0 or totals["clicks"] > 0 or totals["leads"] > 0:
+            roi = (totals["sales"] - totals["cost"]) / totals["cost"] * 100 if totals["cost"] > 0 else 0
+            cpc = totals["cost"] / totals["conv"] if totals["conv"] > 0 else 0
+            al  = totals["apt"]  / totals["leads"] * 100 if totals["leads"] > 0 else 0
+            oa  = totals["cust"] / totals["apt"]   * 100 if totals["apt"]   > 0 else 0
+            filtered.append({**totals, "name":c["name"], "roi":roi, "cpc":cpc, "al":al, "oa":oa})
+
+    # Sort by Sales desc, then ROI desc
+    filtered.sort(key=lambda x: (-x["sales"], -x["roi"]))
+
+    # Averages for coloring
+    avg_al = sum(x["al"] for x in filtered if x["al"]>0) / max(len([x for x in filtered if x["al"]>0]),1)
+    avg_oa = sum(x["oa"] for x in filtered if x["oa"]>0) / max(len([x for x in filtered if x["oa"]>0]),1)
+
+    # Summary groups
+    def isPmax(n): return "performance max" in n.lower() or "pmax" in n.lower()
+    def isBrand(n): return "brand" in n.lower()
+
+    tot   = {f:sum(x[f] for x in filtered) for f in ["clicks","cost","conv","leads","apt","cust","sales"]}
+    pmax  = {f:sum(x[f] for x in filtered if isPmax(x["name"]))  for f in ["clicks","cost","conv","leads","apt","cust","sales"]}
+    brand = {f:sum(x[f] for x in filtered if isBrand(x["name"]) and not isPmax(x["name"])) for f in ["clicks","cost","conv","leads","apt","cust","sales"]}
+    srch  = {f:tot[f]-pmax[f] for f in tot}
+    snb   = {f:srch[f]-brand[f] for f in srch}
+
+    def calc_row(d):
+        return {
+            "roi": (d["sales"]-d["cost"])/d["cost"]*100 if d["cost"]>0 else 0,
+            "cpc": d["cost"]/d["conv"] if d["conv"]>0 else 0,
+            "al":  d["apt"]/d["leads"]*100 if d["leads"]>0 else 0,
+            "oa":  d["cust"]/d["apt"]*100  if d["apt"]>0  else 0,
+        }
+
+    def money(n): return f"${n:,.0f}"
+    def fmt2(n):  return f"{n:,.2f}".rstrip("0").rstrip(".")
+    def colored(val, avg, suffix="%"):
+        color = "#065f46" if val >= avg else "#991b1b"
+        bg    = "#d1fae5" if val >= avg else "#fee2e2"
+        return f'<span style="background:{bg};color:{color};padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;">{fmt2(val)}{suffix}</span>'
+
+    td_style = "text-align:right;padding:6px 8px;border-bottom:0.5px solid #f3f4f6;font-size:12px;"
+    th_style = "padding:8px 8px;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.04em;text-align:right;"
+
+    def data_row(x, bg=""):
+        roi_c = colored(x["roi"], 0)
+        al_c  = colored(x["al"],  avg_al)
+        oa_c  = colored(x["oa"],  avg_oa)
+        return f"""<tr style="background:{bg};" onclick="t3sel(this,'{x['name'].replace("'","\'")}')">
+          <td style="text-align:left;padding:6px 8px;border-bottom:0.5px solid #f3f4f6;font-weight:500;font-size:12px;cursor:pointer;">{x['name']}</td>
+          <td style="{td_style}">{fmt2(x['clicks'])}</td>
+          <td style="{td_style}">{money(x['cost'])}</td>
+          <td style="{td_style}">{fmt2(x['conv'])}</td>
+          <td style="{td_style}">{"$"+fmt2(x['cpc']) if x['cpc']>0 else "—"}</td>
+          <td style="{td_style}">{fmt2(x['leads'])}</td>
+          <td style="{td_style}">{fmt2(x['apt'])}</td>
+          <td style="{td_style}">{fmt2(x['cust'])}</td>
+          <td style="{td_style}">{money(x['sales'])}</td>
+          <td style="{td_style}">{roi_c}</td>
+          <td style="{td_style}">{al_c}</td>
+          <td style="{td_style}">{oa_c}</td>
+        </tr>"""
+
+    def summary_row(label, d, bg):
+        r = calc_row(d)
+        return f"""<tr style="background:{bg};font-weight:700;">
+          <td style="text-align:left;padding:7px 8px;font-size:12px;">{label}</td>
+          <td style="{td_style}">{fmt2(d['clicks'])}</td>
+          <td style="{td_style}">{money(d['cost'])}</td>
+          <td style="{td_style}">{fmt2(d['conv'])}</td>
+          <td style="{td_style}">{"$"+fmt2(r['cpc']) if r['cpc']>0 else "—"}</td>
+          <td style="{td_style}">{fmt2(d['leads'])}</td>
+          <td style="{td_style}">{fmt2(d['apt'])}</td>
+          <td style="{td_style}">{fmt2(d['cust'])}</td>
+          <td style="{td_style}">{money(d['sales'])}</td>
+          <td style="{td_style}">{fmt2(r['roi'])}%</td>
+          <td style="{td_style}">{fmt2(r['al'])}%</td>
+          <td style="{td_style}">{fmt2(r['oa'])}%</td>
+        </tr>"""
+
+    rows_html = "".join([data_row(x, "#fefce8" if i%5==1 else "") for i,x in enumerate(filtered)])
+
+    foot_html = summary_row("Total", tot, "#f8f9fa")
+    if pmax["cost"]>0 or pmax["clicks"]>0:
+        foot_html += summary_row("🔵 PMax Total", pmax, "#EFF6FF")
+    foot_html += summary_row("🟢 All Search (excl. PMax)", srch, "#F0FDF4")
+    foot_html += summary_row("🟡 Search without Brand",    snb,  "#FEFCE8")
+
+    # Build camp_json for trend chart
+    trend_data = json.dumps([{"name":c["name"],"trend":c["trend"]} for c in camp_data])
+
+    tab3_html = f"""
     <style>
-    .t3{padding:0.5rem 0;font-family:sans-serif}.t3h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}.t3h span{font-size:15px;font-weight:500;color:#111827}.t3c{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.t3c label{font-size:12px;color:#6b7280}.t3c select{font-size:12px;padding:5px 10px;border-radius:8px;border:0.5px solid #d1d5db;background:#fff;color:#374151}.t3c button{font-size:12px;padding:5px 14px;border-radius:8px;border:0.5px solid #111827;background:#111827;color:#fff;cursor:pointer}.t3badge{font-size:12px;color:#6b7280;background:#f9fafb;border:0.5px solid #e5e7eb;border-radius:8px;padding:5px 12px;display:inline-block;margin-bottom:12px}.t3tbl{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap}.t3tbl thead tr{background:#111827}.t3tbl th{padding:8px 8px;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.04em;text-align:right}.t3tbl th:first-child{text-align:left;color:#fff}.t3tbl td{padding:6px 8px;border-bottom:0.5px solid #f3f4f6;text-align:right;color:#374151;cursor:pointer}.t3tbl td:first-child{text-align:left;font-weight:500;color:#111827}.t3tbl tfoot td{font-weight:600;background:#f8f9fa;border-top:0.5px solid #e5e7eb;color:#111827;padding:7px 8px}.t3tbl tr.data-row:hover td{background:#f0f9ff}.t3tbl tr.sel td{background:#dbeafe !important}.t3tbl tr.row-hl{background:#fefce8}.rp{background:#d1fae5;color:#065f46;padding:2px 5px;border-radius:4px;font-size:10px;font-weight:500}.rn{background:#fee2e2;color:#991b1b;padding:2px 5px;border-radius:4px;font-size:10px;font-weight:500}.pg{background:#d1fae5;color:#065f46;padding:2px 5px;border-radius:4px;font-size:10px;font-weight:500}.pr{background:#fee2e2;color:#991b1b;padding:2px 5px;border-radius:4px;font-size:10px;font-weight:500}.cbox{background:#fff;border:0.5px solid #e5e7eb;border-radius:10px;padding:14px;margin-top:14px}.ctop{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px}.cname{font-size:13px;font-weight:500;color:#111827}.chint{font-size:11px;color:#6b7280;margin-top:2px}.leg{display:flex;gap:14px}.legi{display:flex;align-items:center;gap:4px;font-size:11px;color:#6b7280}.legd{width:10px;height:10px;border-radius:2px;flex-shrink:0}.mtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.mtab{font-size:11px;padding:4px 10px;border-radius:6px;border:0.5px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer}.mtab.active{background:#111827;color:#fff;border-color:#111827}
+    .t3tbl{{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;}}
+    .t3tbl thead tr{{background:#111827;}}
+    .t3tbl th{{padding:8px 8px;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.04em;text-align:right;}}
+    .t3tbl th:first-child{{text-align:left;color:#fff;}}
+    .t3tbl tr.sel td{{background:#dbeafe !important;}}
+    .cbox{{background:#fff;border:0.5px solid #e5e7eb;border-radius:10px;padding:14px;margin-top:14px;}}
+    .mtabs{{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}}
+    .mtab{{font-size:11px;padding:4px 10px;border-radius:6px;border:0.5px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer;}}
+    .mtab.active{{background:#111827;color:#fff;border-color:#111827;}}
+    .legi{{display:flex;align-items:center;gap:4px;font-size:11px;color:#6b7280;margin-right:12px;}}
+    .legd{{width:10px;height:10px;border-radius:2px;}}
     </style>
-    <div class="t3">
-      <div class="t3h"><span>Campaign Performance</span>
-        <div class="t3c">
-          <label>From</label>
-          <select id="t3fm"><option value="0"  selected>Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option></select>
-          <select id="t3fy"><option selected>2025</option><option>2026</option></select>
-          <label>To</label>
-          <select id="t3tm"><option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3"  selected>Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option></select>
-          <select id="t3ty"><option>2025</option><option selected>2026</option></select>
-          <button onclick="t3Apply()">Apply</button>
+    <div style="overflow-x:auto;margin-bottom:4px;">
+    <table class="t3tbl">
+      <thead><tr>
+        <th style="text-align:left;color:#fff;">Campaign</th>
+        <th>Clicks</th><th>Cost</th><th>Conv.</th><th>Cost/Conv.</th>
+        <th>Leads</th><th>Apt</th><th>Customers</th><th>Sales</th>
+        <th>ROI</th><th>Apt/Lead</th><th>Order/Apt</th>
+      </tr></thead>
+      <tbody id="t3body">{rows_html}</tbody>
+      <tfoot style="border-top:2px solid #374151;">{foot_html}</tfoot>
+    </table></div>
+    <div class="cbox">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+        <div style="font-size:13px;font-weight:500;color:#111827;" id="t3cname">Click a campaign to see trend</div>
+        <div style="display:flex;">
+          <span class="legi"><span class="legd" style="background:#378ADD;"></span><span id="t3lty">This period</span></span>
+          <span class="legi"><span class="legd" style="background:#B5D4F4;"></span><span id="t3lly">Last period</span></span>
         </div>
       </div>
-      <div id="t3badge" class="t3badge"></div>
-      <div style="overflow-x:auto;margin-bottom:4px;">
-      <table class="t3tbl">
-        <thead><tr><th>Campaign</th><th>Clicks</th><th>Cost</th><th>Conv.</th><th>Cost/Conv.</th><th>Leads</th><th>Apt</th><th>Customers</th><th>Sales</th><th>ROI</th><th>Apt/Lead</th><th>Order/Apt</th></tr></thead>
-        <tbody id="t3body">""" + camp_rows + """
-          <tr><td colspan="12" style="text-align:center;color:#9ca3af;font-style:italic;padding:6px;">Click any row to see monthly trend</td></tr>
-        </tbody>
-        <tfoot id="t3foot"></tfoot>
-      </table></div>
-      <div class="cbox" id="t3cbox">
-        <div class="ctop">
-          <div><div class="cname" id="t3cname">All Campaigns — Monthly Trend</div><div class="chint" id="t3chint"></div></div>
-          <div class="leg">
-            <span class="legi"><span class="legd" style="background:#378ADD"></span><span id="t3lty">This period</span></span>
-            <span class="legi"><span class="legd" style="background:#B5D4F4"></span><span id="t3lly">Last period</span></span>
-          </div>
-        </div>
-        <div class="mtabs">
-          <button class="mtab active" onclick="t3SM('clicks',this)">Clicks</button>
-          <button class="mtab" onclick="t3SM('cost',this)">Cost</button>
-          <button class="mtab" onclick="t3SM('conv',this)">Conversions</button>
-          <button class="mtab" onclick="t3SM('leads',this)">Leads</button>
-          <button class="mtab" onclick="t3SM('apt',this)">Appointments</button>
-          <button class="mtab" onclick="t3SM('sales',this)">Sales</button>
-          <button class="mtab" onclick="t3SM('roi',this)">ROI %</button>
-        </div>
-        <div style="position:relative;height:240px;"><canvas id="t3chart"></canvas></div>
+      <div class="mtabs">
+        <button class="mtab active" onclick="t3SM('clicks',this)">Clicks</button>
+        <button class="mtab" onclick="t3SM('cost',this)">Cost</button>
+        <button class="mtab" onclick="t3SM('conv',this)">Conversions</button>
+        <button class="mtab" onclick="t3SM('leads',this)">Leads</button>
+        <button class="mtab" onclick="t3SM('apt',this)">Appointments</button>
+        <button class="mtab" onclick="t3SM('sales',this)">Sales</button>
+        <button class="mtab" onclick="t3SM('roi',this)">ROI %</button>
       </div>
+      <div style="position:relative;height:240px;"><canvas id="t3chart"></canvas></div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script>
-    // v20260428222257
     const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const TD=""" + camp_json + """;
-    var fm=0,fy=2025,tm=3,ty=2026,ci=-1,cm='clicks',tc=null;
-    function fmt(n){if(n===null||n===undefined||isNaN(n)||n==='')return'0';var r=Math.round(n*100)/100;return r.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2});}
-    function rb(v){return v>=0?'<span class="rp">'+fmt(v)+'%</span>':'<span class="rn">'+fmt(v)+'%</span>';}
-    function pb(v,t){if(!isFinite(v))return'—';return v>=t?'<span class="pg">'+fmt(v)+'%</span>':'<span class="pr">'+fmt(v)+'%</span>';}
-    function mn(n){return n>0?'$'+fmt(n):'$0';}
-    function se(id,v){var el=document.getElementById(id);if(el)el.innerHTML=v;}
-    function getMonths(a,b,c,d){var r=[],mo=a,yr=b;while(yr<d||(yr===d&&mo<=c)){r.push({m:mo,y:yr});mo++;if(mo>11){mo=0;yr++;}}return r;}
-    function tv(i,y,f,m){
+    const TD={trend_data};
+    const FM={fm_idx};const FY={t3_fy};const TM={tm_idx};const TY={t3_ty};
+    var selName=null,cm='clicks',tc=null;
+
+    function tv(name,y,f,m){{
       var yr=String(y);
-      if(!TD[i]||!TD[i].trend||!TD[i].trend[yr])return 0;
-      var val=TD[i].trend[yr][f]?TD[i].trend[yr][f][m]:0;
-      return val||0;
-    }
-    function gv(i,months,f){return months.reduce(function(s,p){return s+tv(i,p.y,f,p.m);},0);}
-    function gav(i,months){var vl=months.filter(function(p){return tv(i,p.y,'clicks',p.m)>0;});if(!vl.length)return 0;return vl.reduce(function(s,p){return s+tv(i,p.y,'roi',p.m);},0)/vl.length;}
-    function rb(v){return v>=0?'<span class="rp">'+v.toFixed(1)+'%</span>':'<span class="rn">'+v.toFixed(1)+'%</span>';}
-    function pb(v,t){if(!isFinite(v))return'—';return v>=t?'<span class="pg">'+v.toFixed(1)+'%</span>':'<span class="pr">'+v.toFixed(1)+'%</span>';}
-    function mn(n){return n>0?'$'+Math.round(n).toLocaleString():'$0';}
-    function se(id,v){var el=document.getElementById(id);if(el)el.innerHTML=v;}
-    function t3Apply(){
-      fm=parseInt(document.getElementById('t3fm').value);fy=parseInt(document.getElementById('t3fy').value);
-      tm=parseInt(document.getElementById('t3tm').value);ty=parseInt(document.getElementById('t3ty').value);
-      var months=getMonths(fm,fy,tm,ty);
-      var fromStr=MN[fm]+' '+fy;var toStr=MN[tm]+' '+ty;
-      document.getElementById('t3badge').textContent=fromStr+' - '+toStr;
+      var c=TD.find(function(x){{return x.name===name;}});
+      if(!c||!c.trend||!c.trend[yr])return 0;
+      return c.trend[yr][f]?c.trend[yr][f][m]||0:0;
+    }}
+    function getMonths(a,b,c,d){{var r=[],mo=a,yr=b;while(yr<d||(yr===d&&mo<=c)){{r.push({{m:mo,y:yr}});mo++;if(mo>11){{mo=0;yr++;}}}}return r;}}
 
-      // Step 1: Calculate metrics for each campaign
-      var campData=[];
-      TD.forEach(function(c,i){
-        var cl=gv(i,months,'clicks'),co=gv(i,months,'cost'),cv=gv(i,months,'conv'),
-            le=gv(i,months,'leads'),ap=gv(i,months,'apt'),cu=gv(i,months,'cust'),
-            sa=gv(i,months,'sales');
-        var hasData=cl>0||co>0||le>0||cv>0||sa>0;
-        campData.push({i:i,name:TD[i].name,cl:cl,co:co,cv:cv,le:le,ap:ap,cu:cu,sa:sa,hasData:hasData});
-      });
-
-      // Step 2: Only active (hasData) campaigns
-      var active=campData.filter(function(m){return m.hasData;});
-      console.log('Total campaigns:',campData.length,'Active:',active.length,'Range:',fy+'-'+ty);
-
-      // Step 3: Sort active by Sales desc, then ROI desc
-      active.sort(function(a,b){
-        if(b.sa!==a.sa)return b.sa-a.sa;
-        var ra=a.co>0?(a.sa-a.co)/a.co:0, rb2=b.co>0?(b.sa-b.co)/b.co:0;
-        return rb2-ra;
-      });
-
-      // Step 4: Calc averages for coloring
-      var avgAl=0,avgOa=0,nAl=0,nOa=0;
-      active.forEach(function(m){
-        if(m.le>0){avgAl+=m.ap/m.le*100;nAl++;}
-        if(m.ap>0){avgOa+=m.cu/m.ap*100;nOa++;}
-      });
-      avgAl=nAl>0?avgAl/nAl:0; avgOa=nOa>0?avgOa/nOa:0;
-
-      // Step 5: Identify PMax and Brand
-      function isPmax(n){var l=n.toLowerCase();return l.indexOf('performance max')>-1||l.indexOf('pmax')>-1;}
-      function isBrand(n){var l=n.toLowerCase();return l.indexOf('brand')>-1;}
-
-      // Step 6: Summary totals (only from active campaigns)
-      function zero(){return{cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};}
-      var tot=zero(),pmax=zero(),brand=zero();
-      active.forEach(function(m){
-        ['cl','co','cv','le','ap','cu','sa'].forEach(function(f){tot[f]+=m[f];});
-        if(isPmax(m.name)){['cl','co','cv','le','ap','cu','sa'].forEach(function(f){pmax[f]+=m[f];});}
-        if(isBrand(m.name)&&!isPmax(m.name)){['cl','co','cv','le','ap','cu','sa'].forEach(function(f){brand[f]+=m[f];});}
-      });
-      var search={cl:tot.cl-pmax.cl,co:tot.co-pmax.co,cv:tot.cv-pmax.cv,le:tot.le-pmax.le,ap:tot.ap-pmax.ap,cu:tot.cu-pmax.cu,sa:tot.sa-pmax.sa};
-      var snb={cl:search.cl-brand.cl,co:search.co-brand.co,cv:search.cv-brand.cv,le:search.le-brand.le,ap:search.ap-brand.ap,cu:search.cu-brand.cu,sa:search.sa-brand.sa};
-
-      // Step 7: Hide ALL rows first, then show only active in sorted order
-      var tbody=document.getElementById('t3body');
-      var allRows=Array.from(tbody.querySelectorAll('tr.data-row'));
-      allRows.forEach(function(r){r.style.display='none';});
-
-      function colored(val,avg){
-        if(!isFinite(val))return'—';
-        var col=val>=avg?'#065f46':'#991b1b',bg=val>=avg?'#d1fae5':'#fee2e2';
-        return'<span style="background:'+bg+';color:'+col+';padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;">'+fmt(val)+'%</span>';
-      }
-
-      active.forEach(function(m){
-        var row=allRows[m.i];
-        if(!row)return;
-        tbody.appendChild(row);
-        row.style.display='';
-        var cpc=m.cv>0?'$'+fmt(m.co/m.cv):'—';
-        var al=m.le>0?m.ap/m.le*100:0;
-        var oa=m.ap>0?m.cu/m.ap*100:null;
-        var roi=m.co>0?(m.sa-m.co)/m.co*100:0;
-        se('t3r'+m.i+'_clicks',fmt(m.cl));se('t3r'+m.i+'_cost',mn(m.co));
-        se('t3r'+m.i+'_conv',fmt(m.cv));se('t3r'+m.i+'_cpc',cpc);
-        se('t3r'+m.i+'_leads',fmt(m.le));se('t3r'+m.i+'_apt',fmt(m.ap));
-        se('t3r'+m.i+'_cust',fmt(m.cu));se('t3r'+m.i+'_sales',mn(m.sa));
-        se('t3r'+m.i+'_roi',colored(roi,0));
-        se('t3r'+m.i+'_al',colored(al,avgAl));
-        se('t3r'+m.i+'_oa',oa!==null?colored(oa,avgOa):'#DIV/0!');
-      });
-
-      // Step 8: Build summary rows
-      function summRow(label,d,bg){
-        var cpc=d.cv>0?'$'+fmt(d.co/d.cv):'—';
-        var roi=d.co>0?fmt((d.sa-d.co)/d.co*100)+'%':'—';
-        var al=d.le>0?fmt(d.ap/d.le*100)+'%':'—';
-        var oa=d.ap>0?fmt(d.cu/d.ap*100)+'%':'—';
-        return'<tr style="background:'+bg+';font-weight:700;">'+
-          '<td style="padding:7px 8px;font-size:12px;">'+label+'</td>'+
-          '<td style="text-align:right;padding:7px 8px;">'+fmt(d.cl)+'</td>'+
-          '<td style="text-align:right;padding:7px 8px;">'+mn(d.co)+'</td>'+
-          '<td style="text-align:right;padding:7px 8px;">'+fmt(d.cv)+'</td>'+
-          '<td style="text-align:right;padding:7px 8px;">'+cpc+'</td>'+
-          '<td style="text-align:right;padding:7px 8px;">'+fmt(d.le)+'</td>'+
-          '<td style="text-align:right;padding:7px 8px;">'+fmt(d.ap)+'</td>'+
-          '<td style="text-align:right;padding:7px 8px;">'+fmt(d.cu)+'</td>'+
-          '<td style="text-align:right;padding:7px 8px;">'+mn(d.sa)+'</td>'+
-          '<td style="text-align:right;padding:7px 8px;">'+roi+'</td>'+
-          '<td style="text-align:right;padding:7px 8px;">'+al+'</td>'+
-          '<td style="text-align:right;padding:7px 8px;">'+oa+'</td>'+
-          '</tr>';
-      }
-
-      var totRoi=tot.co>0?fmt((tot.sa-tot.co)/tot.co*100)+'%':'—';
-      var totAl=tot.le>0?fmt(tot.ap/tot.le*100)+'%':'—';
-      var totOa=tot.ap>0?fmt(tot.cu/tot.ap*100)+'%':'—';
-      var totCpc=tot.cv>0?'$'+fmt(tot.co/tot.cv):'—';
-
-      var footHtml=
-        '<tr style="background:#f8f9fa;font-weight:700;border-top:2px solid #374151;">'+
-        '<td style="padding:8px 8px;">Total</td>'+
-        '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.cl)+'</td>'+
-        '<td style="text-align:right;padding:8px 8px;">'+mn(tot.co)+'</td>'+
-        '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.cv)+'</td>'+
-        '<td style="text-align:right;padding:8px 8px;">'+totCpc+'</td>'+
-        '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.le)+'</td>'+
-        '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.ap)+'</td>'+
-        '<td style="text-align:right;padding:8px 8px;">'+fmt(tot.cu)+'</td>'+
-        '<td style="text-align:right;padding:8px 8px;">'+mn(tot.sa)+'</td>'+
-        '<td style="text-align:right;padding:8px 8px;">'+totRoi+'</td>'+
-        '<td style="text-align:right;padding:8px 8px;">'+totAl+'</td>'+
-        '<td style="text-align:right;padding:8px 8px;">'+totOa+'</td>'+
-        '</tr>';
-
-      if(pmax.co>0||pmax.cl>0) footHtml+=summRow('🔵 PMax Total',pmax,'#EFF6FF');
-      footHtml+=summRow('🟢 All Search (excl. PMax)',search,'#F0FDF4');
-      footHtml+=summRow('🟡 Search without Brand',snb,'#FEFCE8');
-
-      document.getElementById('t3foot').innerHTML=footHtml;
+    function t3sel(row,name){{
+      document.querySelectorAll('#t3body tr').forEach(function(r){{r.classList.remove('sel');}});
+      if(selName===name){{selName=null;document.getElementById('t3cname').textContent='Click a campaign to see trend';if(tc){{tc.destroy();tc=null;}}return;}}
+      row.classList.add('sel');selName=name;
+      document.getElementById('t3cname').textContent=name+' — Monthly Trend';
       t3UC();
-    }
-    function t3Select(row,idx){
-      if(row.classList.contains('sel')){
-        row.classList.remove('sel');
-        ci=-1;
-        document.getElementById('t3cname').textContent='All Campaigns — Monthly Trend';
-        document.getElementById('t3chint').textContent='';
-        t3UC();
-        return;
-      }
-      document.querySelectorAll('#t3body tr.data-row').forEach(function(r){r.classList.remove('sel');});
-      row.classList.add('sel');ci=idx;
-      document.getElementById('t3cname').textContent=TD[idx].name+' — Monthly Trend';
-      t3UC();
-    }
-    function t3SM(m,btn){cm=m;document.querySelectorAll('.mtab').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');t3UC();}
-    function t3UC(){
-      var isR=cm==='roi';var months=getMonths(fm,fy,tm,ty);var ly=months.map(function(p){return{m:p.m,y:p.y-1};});
-      var labels=months.map(function(p){return MN[p.m]+' '+p.y;});
-      var tyd,lyd;
-      if(ci<0){
-        // All campaigns — sum across all
-        tyd=months.map(function(p){return TD.reduce(function(s,c,i){return s+tv(i,p.y,cm,p.m);},0);});
-        lyd=ly.map(function(p){return TD.reduce(function(s,c,i){return s+tv(i,p.y,cm,p.m);},0);});
-      } else {
-        tyd=months.map(function(p){return tv(ci,p.y,cm,p.m);});
-        lyd=ly.map(function(p){return tv(ci,p.y,cm,p.m);});
-      }
-      var tyy=[...new Set(months.map(function(p){return p.y;}))].join('–');var lyy=[...new Set(ly.map(function(p){return p.y;}))].join('–');
-      document.getElementById('t3lty').textContent=fy+'–'+ty;
-      document.getElementById('t3lly').textContent='vs '+( fy-1)+'–'+(ty-1);
-      // Hide LY legend if before 2025
-      var lyLegend = document.getElementById('t3lly').parentElement;
-      if((fy-1) < 2025) lyLegend.style.display='none'; else lyLegend.style.display='flex';
-      document.getElementById('t3chint').textContent=MN[fm]+' '+fy+' - '+MN[tm]+' '+ty+'  |  vs same period last year';
+    }}
+    function t3SM(m,btn){{cm=m;document.querySelectorAll('.mtab').forEach(function(b){{b.classList.remove('active');}});btn.classList.add('active');t3UC();}}
+    function t3UC(){{
+      if(!selName)return;
+      var months=getMonths(FM,FY,TM,TY);
+      var ly=months.map(function(p){{return{{m:p.m,y:p.y-1}};}});
+      var labels=months.map(function(p){{return MN[p.m]+' '+p.y;}});
+      var tyd=months.map(function(p){{return tv(selName,p.y,cm,p.m);}});
+      var lyd=ly.map(function(p){{return tv(selName,p.y,cm,p.m);}});
+      document.getElementById('t3lty').textContent=FY+'–'+TY;
+      document.getElementById('t3lly').textContent=(FY-1)+'–'+(TY-1);
       if(tc)tc.destroy();
-      var lyDatasets=(fy-1)>=2025?[{data:lyd,borderColor:'#B5D4F4',backgroundColor:'#B5D4F422',fill:true,tension:0.3,pointRadius:4,borderDash:[5,4]}]:[];
-      tc=new Chart(document.getElementById('t3chart'),{type:'line',data:{labels:labels,datasets:[{data:tyd,borderColor:'#378ADD',backgroundColor:'#378ADD22',fill:true,tension:0.3,pointRadius:4}].concat(lyDatasets)},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return isR?' '+ctx.parsed.y+'%':' '+ctx.parsed.y.toLocaleString();}}}},scales:{x:{ticks:{font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:16},grid:{display:false}},y:{ticks:{font:{size:10},callback:function(v){return isR?v+'%':v.toLocaleString();}},grid:{color:'#f3f4f6'}}}}});
-    }
-    setTimeout(function(){t3Apply();}, 100);
+      tc=new Chart(document.getElementById('t3chart'),{{type:'line',data:{{labels:labels,datasets:[
+        {{data:tyd,borderColor:'#378ADD',backgroundColor:'#378ADD22',fill:true,tension:0.3,pointRadius:4}},
+        {{data:lyd,borderColor:'#B5D4F4',backgroundColor:'#B5D4F422',fill:true,tension:0.3,pointRadius:4,borderDash:[5,4]}}
+      ]}},options:{{responsive:true,maintainAspectRatio:false,plugins:{{legend:{{display:false}}}},scales:{{x:{{ticks:{{font:{{size:10}},maxRotation:45}},grid:{{display:false}}}},y:{{ticks:{{font:{{size:10}}}},grid:{{color:'#f3f4f6'}}}}}}}}}});
+    }}
     </script>
     """
-    st.components.v1.html(tab3_html, height=len(camp_data)*36+720, scrolling=False)
+    st.components.v1.html(tab3_html, height=len(filtered)*36+680, scrolling=False)
