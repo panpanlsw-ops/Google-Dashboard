@@ -786,7 +786,13 @@ with tab3:
       document.getElementById('t3badge').textContent=badgeText;
       TD.forEach(function(c,i){
         var cl=gv(i,months,'clicks'),co=gv(i,months,'cost'),cv=gv(i,months,'conv'),le=gv(i,months,'leads'),ap=gv(i,months,'apt'),cu=gv(i,months,'cust'),sa=gv(i,months,'sales'),ro=gav(i,months),cpc=cv>0?co/cv:0,al=le>0?ap/le*100:0,oa=ap>0?cu/ap*100:null;
-        ro=Math.abs(ro)<10?ro*100:ro; // convert decimal ROI to percent if needed
+        ro=Math.abs(ro)<10?ro*100:ro;
+        var row=document.querySelectorAll('#t3body tr.data-row')[i];
+        if(co===0&&cl===0&&le===0){
+          if(row)row.style.display='none';
+          return;
+        }
+        if(row)row.style.display='';
         se('t3r'+i+'_clicks',fmt(cl));se('t3r'+i+'_cost',mn(co));se('t3r'+i+'_conv',fmt(cv));se('t3r'+i+'_cpc',cpc>0?'$'+fmt(cpc):'—');
         se('t3r'+i+'_leads',fmt(le));se('t3r'+i+'_apt',fmt(ap));se('t3r'+i+'_cust',fmt(cu));se('t3r'+i+'_sales',mn(sa));
         se('t3r'+i+'_roi',rb(ro));se('t3r'+i+'_al',pb(al,30));se('t3r'+i+'_oa',oa!==null?pb(oa,20):'#DIV/0!');
