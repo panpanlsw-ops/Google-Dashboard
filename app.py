@@ -803,7 +803,7 @@ with tab3:
       document.getElementById('t3badge').textContent=badgeText;
       TD.forEach(function(c,i){
         var cl=gv(i,months,'clicks'),co=gv(i,months,'cost'),cv=gv(i,months,'conv'),le=gv(i,months,'leads'),ap=gv(i,months,'apt'),cu=gv(i,months,'cust'),sa=gv(i,months,'sales'),ro=gav(i,months),cpc=cv>0?co/cv:0,al=le>0?ap/le*100:0,oa=ap>0?cu/ap*100:null;
-        ro=Math.abs(ro)<10?ro*100:ro;
+        ro=ro*100;
         se('t3r'+i+'_clicks',fmt(cl));se('t3r'+i+'_cost',mn(co));se('t3r'+i+'_conv',fmt(cv));se('t3r'+i+'_cpc',cpc>0?'$'+fmt(cpc):'—');
         se('t3r'+i+'_leads',fmt(le));se('t3r'+i+'_apt',fmt(ap));se('t3r'+i+'_cust',fmt(cu));se('t3r'+i+'_sales',mn(sa));
         se('t3r'+i+'_roi',rb(ro));se('t3r'+i+'_al',pb(al,30));se('t3r'+i+'_oa',oa!==null?pb(oa,20):'#DIV/0!');
@@ -811,7 +811,7 @@ with tab3:
       var tot={cl:0,co:0,cv:0,le:0,ap:0,cu:0,sa:0};
       TD.forEach(function(_,i){tot.cl+=gv(i,months,'clicks');tot.co+=gv(i,months,'cost');tot.cv+=gv(i,months,'conv');tot.le+=gv(i,months,'leads');tot.ap+=gv(i,months,'apt');tot.cu+=gv(i,months,'cust');tot.sa+=gv(i,months,'sales');});
       var ar=TD.reduce(function(s,_,i){return s+gav(i,months);},0)/TD.length;
-      ar=Math.abs(ar)<10?ar*100:ar;
+      ar=ar*100;
       document.getElementById('t3foot').innerHTML='<tr><td>Total</td><td>'+fmt(tot.cl)+'</td><td>'+mn(tot.co)+'</td><td>'+fmt(tot.cv)+'</td><td>—</td><td>'+fmt(tot.le)+'</td><td>'+fmt(tot.ap)+'</td><td>'+fmt(tot.cu)+'</td><td>'+mn(tot.sa)+'</td><td>'+rb(ar)+'</td><td>'+pb(tot.le>0?tot.ap/tot.le*100:0,30)+'</td><td>'+pb(tot.ap>0?tot.cu/tot.ap*100:0,15)+'</td></tr>';
       t3UC();
     }
