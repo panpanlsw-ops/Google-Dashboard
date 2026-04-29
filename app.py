@@ -182,10 +182,10 @@ with tab1:
     with c4:
         metric_card("Appointments", f"{d['appointments']:,}", "teal", None,
             f"{projected(d['appointments'], day_of_month, days_in_month):,}", days_left,
-            ly_mtd=f"{ly.get('appointments',0):,}", ly_full=f"{lyf.get('appointments',0):,}")
+            ly_mtd=f"{ly.get('appointments',0):,}", ly_full=None)
     with c5:
         metric_card("Customers", f"{d['customers']:,}", "teal", None, None, None,
-            ly_mtd=f"{ly.get('customers',0):,}", ly_full=f"{lyf.get('customers',0):,}")
+            ly_mtd=f"{ly.get('customers',0):,}", ly_full=None)
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("---")
