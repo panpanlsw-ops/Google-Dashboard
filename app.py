@@ -910,7 +910,7 @@ with tab3:
 
     chart_json = json.dumps({"labels": chart_labels, "trends": all_trends})
 
-    tab3_html = f"""
+    tab3_html = ("""
     <style>
     body{{margin:0;font-family:sans-serif;}}
     .t3tbl{{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;}}
@@ -956,9 +956,11 @@ with tab3:
         <button class="mtab" onclick="setM('roi',this)">ROI %</button>
       </div>
       <div style="position:relative;height:260px;"><canvas id="t3c"></canvas></div>
-    </div>
-    <script type="application/json" id="t3data">{chart_json}</script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    </div>"""
+        + '<script type="application/json" id="t3data">'
+        + chart_json
+        + '</script>'
+        + """<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script>
     var D=JSON.parse(document.getElementById('t3data').textContent);
     var selKey='__total__', curM='clicks', ch=null;
@@ -1002,5 +1004,5 @@ with tab3:
     }}
     draw();
     </script>
-    """
+    """)
     st.components.v1.html(tab3_html, height=len(filtered)*34+640, scrolling=False)
