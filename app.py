@@ -2,7 +2,7 @@
 import streamlit as st
 from datetime import date, timedelta
 import calendar
-from data import get_data, get_roi_data, get_regional_data, get_campaign_data, get_campaigns
+from data import get_data, get_roi_data, get_regional_data, get_campaign_data, get_campaigns, get_regional_detail
 
 st.set_page_config(page_title="Google Daily Report", page_icon="📊", layout="wide")
 
@@ -578,6 +578,7 @@ with tab2:
               "#639922","#888780","#E24B4A","#7F77DD","#5DCAA5","#F0997B",
               "#97C459","#EF9F27","#ED93B1","#B4B2A9"]
 
+    detail_data = get_regional_detail()
     rows_html = ""
     pie_names = []
     pie_leads = []
@@ -603,6 +604,7 @@ with tab2:
         al_str = str(o.get("apt_leads","0%"))
         oa_str = str(o.get("order_apt","0%"))
         ol_str = str(o.get("order_leads","0%"))
+        office_key = o["name"].replace(" ","_").replace("/","_")
 
         # For pie chart use numeric value
         try: lp_num = float(lp_str.replace("%",""))
@@ -642,8 +644,30 @@ with tab2:
         bar_l = f'<div style="display:flex;align-items:center;gap:5px;justify-content:flex-end;"><div style="width:50px;height:5px;background:#f3f4f6;border-radius:3px;overflow:hidden;"><div style="width:{bar_w_l}%;height:100%;background:#378ADD;border-radius:3px;"></div></div>{lp_badge}</div>'
         bar_s = f'<div style="display:flex;align-items:center;gap:5px;justify-content:flex-end;"><div style="width:50px;height:5px;background:#f3f4f6;border-radius:3px;overflow:hidden;"><div style="width:{bar_w_s}%;height:100%;background:#1D9E75;border-radius:3px;"></div></div>{sp_badge}</div>'
 
-        rows_html += f"""<tr>
-          <td style="text-align:left;font-weight:500;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#111827;">{o["name"]}</td>
+        # Build detail rows for this office
+        detail_rows = ""
+        if o["name"] in detail_data:
+            detail_rows = f'<tr id="detail_{office_key}" style="display:none;"><td colspan="14" style="padding:0;"><table style="width:100%;border-collapse:collapse;background:#f8fafc;font-size:11px;">'
+            detail_rows += '<tr style="background:#e2e8f0;"><th style="text-align:left;padding:5px 16px;color:#475569;">Campaign</th><th style="text-align:right;padding:5px 8px;color:#475569;">Unique Leads</th><th style="text-align:right;padding:5px 8px;color:#475569;">New Leads</th><th style="text-align:right;padding:5px 8px;color:#475569;">Apt</th><th style="text-align:right;padding:5px 8px;color:#475569;">Quote</th><th style="text-align:right;padding:5px 8px;color:#475569;">Customers</th><th style="text-align:right;padding:5px 8px;color:#475569;">Sales</th></tr>'
+            for d in detail_data[o["name"]]:
+                detail_rows += (
+                    f'<tr style="border-bottom:0.5px solid #e2e8f0;">' +
+                    f'<td style="padding:4px 16px;color:#374151;">{d["campaign"]}</td>' +
+                    f'<td style="text-align:right;padding:4px 8px;">{d["ul"]}</td>' +
+                    f'<td style="text-align:right;padding:4px 8px;">{d["nl"]}</td>' +
+                    f'<td style="text-align:right;padding:4px 8px;">{d["apt"]}</td>' +
+                    f'<td style="text-align:right;padding:4px 8px;">{d["quote"]}</td>' +
+                    f'<td style="text-align:right;padding:4px 8px;">{d["cust"]}</td>' +
+                    f'<td style="text-align:right;padding:4px 8px;">${d["sales"]:,.0f}</td>' +
+                    f'</tr>'
+                )
+            detail_rows += '</table></td></tr>'
+
+        has_detail = o["name"] in detail_data
+        expand_btn = f'<span onclick="toggleDetail(\'{office_key}\')" style="cursor:pointer;margin-left:6px;font-size:11px;color:#6b7280;" id="btn_{office_key}">{"▶" if has_detail else ""}</span>' if has_detail else ""
+
+        rows_html += f"""<tr onclick="{'toggleDetail(\''+office_key+'\')' if has_detail else ''}" style="cursor:{'pointer' if has_detail else 'default'};">
+          <td style="text-align:left;font-weight:500;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#111827;">{o["name"]}{expand_btn}</td>
           <td style="{td}">{o["ul"]}</td>
           <td style="{td}">{o["nl"]}</td>
           <td style="{td}">{o["apt"]}</td>
@@ -657,7 +681,7 @@ with tab2:
           <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{al_badge}</td>
           <td style="{td}">{oa_str}</td>
           <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{ol_badge}</td>
-        </tr>"""
+        </tr>""" + detail_rows
 
     th = "padding:9px 10px;font-size:11px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase;white-space:nowrap;"
     date_label = f"{month_name} 1–{yesterday.day}, {year}"
@@ -709,6 +733,17 @@ with tab2:
         <div style="position:relative;height:300px;"><canvas id="pie-sales"></canvas></div>
       </div>
     </div>
+    <script>
+    function toggleDetail(key){{
+      var row=document.getElementById('detail_'+key);
+      var btn=document.getElementById('btn_'+key);
+      if(row){{
+        var showing=row.style.display!=='none';
+        row.style.display=showing?'none':'table-row';
+        if(btn)btn.textContent=showing?'▶':'▼';
+      }}
+    }}
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script>
     const COLORS={COLORS};const NAMES={pie_names};const LEADS={pie_leads};const SALES={pie_sales};
