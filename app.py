@@ -957,9 +957,10 @@ with tab3:
       </div>
       <div style="position:relative;height:260px;"><canvas id="t3c"></canvas></div>
     </div>
+    <script type="application/json" id="t3data">{chart_json}</script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script>
-    var D={chart_json};
+    var D=JSON.parse(document.getElementById('t3data').textContent);
     var selKey='__total__', curM='clicks', ch=null;
 
     function selRow(row, key, label){{
