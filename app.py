@@ -806,7 +806,7 @@ with tab3:
         roi_c = colored(x["roi"], 0)
         al_c  = colored(x["al"],  avg_al)
         oa_c  = colored(x["oa"],  avg_oa)
-        return f"""<tr style="background:{bg};" onclick="t3sel(this,'{x['name'].replace("'","\'")}')">
+        return f"""<tr style="background:{bg};" onclick="t3sel(this,'{x['name'].replace("'","\'")}','{x['name'].replace("'","\'")}')">
           <td style="text-align:left;padding:6px 8px;border-bottom:0.5px solid #f3f4f6;font-weight:500;font-size:12px;cursor:pointer;">{x['name']}</td>
           <td style="{td_style}">{fmt2(x['clicks'])}</td>
           <td style="{td_style}">{money(x['cost'])}</td>
@@ -821,9 +821,16 @@ with tab3:
           <td style="{td_style}">{oa_c}</td>
         </tr>"""
 
+    summary_keys = {
+        "🔵 PMax Total": "__pmax__",
+        "🟢 All Search (excl. PMax)": "__srch__",
+        "🟡 Search without Brand": "__snb__",
+    }
     def summary_row(label, d, bg):
         r = calc_row(d)
-        return f"""<tr style="background:{bg};font-weight:700;">
+        key = summary_keys.get(label, "__total__")
+        safe_label = label.replace("'","\'")
+        return f"""<tr style="background:{bg};font-weight:700;cursor:pointer;" onclick="t3sel(this,'{key}','{safe_label}')">
           <td style="text-align:left;padding:7px 8px;font-size:12px;">{label}</td>
           <td style="{td_style}">{fmt2(d['clicks'])}</td>
           <td style="{td_style}">{money(d['cost'])}</td>
@@ -843,7 +850,7 @@ with tab3:
     tot_al_val  = tot["apt"]/tot["leads"]*100 if tot["leads"]>0 else 0
     tot_oa_val  = tot["cust"]/tot["apt"]*100  if tot["apt"]>0  else 0
     tot_cpc_val = tot["cost"]/tot["conv"]     if tot["conv"]>0 else 0
-    total_click_row = f'''<tr style="background:#111827;color:#fff;font-weight:700;cursor:pointer;" onclick="t3sel(this,'__total__')">
+    total_click_row = f'''<tr style="background:#111827;color:#fff;font-weight:700;cursor:pointer;" onclick="t3sel(this,'__total__','📊 Total (All Active)')">
       <td style="text-align:left;padding:7px 8px;font-size:12px;color:#fff;">📊 Total (All Active)</td>
       <td style="text-align:right;padding:7px 8px;">{fmt2(tot["clicks"])}</td>
       <td style="text-align:right;padding:7px 8px;">{money(tot["cost"])}</td>
@@ -869,83 +876,89 @@ with tab3:
     trend_data = json.dumps([{"name":c["name"],"trend":c["trend"]} for c in camp_data])
 
 
-    # ── Trend chart - Python calculated ──────────────────────────────────────
-    chart_groups = {"Total (All Active)": tot}
-    if pmax["cost"]>0 or pmax["clicks"]>0:
-        chart_groups["🔵 PMax Total"] = pmax
-    chart_groups["🟢 All Search (excl. PMax)"] = srch
-    chart_groups["🟡 Search without Brand"] = snb
-    for x in filtered:
-        chart_groups[x["name"]] = None  # None = use trend data
-
-    selected_chart = st.selectbox("Show trend for:", list(chart_groups.keys()), key="t3_chart_sel")
-
-    # Build monthly data for selected
-    MONTH_NAMES_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-    chart_metric = st.radio("Metric:", ["clicks","cost","conv","leads","apt","cust","sales","roi"], horizontal=True, key="t3_metric")
-
-    labels = [f"{MONTHS[mo]} {yr}" for yr, mo in sel_months]
+    # ── Pre-build all chart data in Python ───────────────────────────────────
+    labels    = [f"{MONTHS[mo]} {yr}"   for yr, mo in sel_months]
     ly_labels = [f"{MONTHS[mo]} {yr-1}" for yr, mo in sel_months]
 
-    if chart_groups[selected_chart] is None:
-        # Individual campaign - use trend data
-        camp_obj = next((c for c in camp_data if c["name"]==selected_chart), None)
-        def get_val(yr, mo, field):
+    def get_camp_vals(camp_obj, field):
+        vals = []
+        for yr, mo in sel_months:
             yr_str = str(yr)
             if camp_obj and yr_str in camp_obj["trend"]:
-                return camp_obj["trend"][yr_str].get(field,[0]*12)[mo]
-            return 0
-        if chart_metric == "roi":
-            def get_roi(yr, mo):
-                cost  = get_val(yr, mo, "cost")
-                sales = get_val(yr, mo, "sales")
-                return (sales-cost)/cost*100 if cost>0 else 0
-            ty_vals = [get_roi(yr, mo) for yr, mo in sel_months]
-            ly_vals = [get_roi(yr-1, mo) for yr, mo in sel_months]
-        else:
-            ty_vals = [get_val(yr, mo, chart_metric) for yr, mo in sel_months]
-            ly_vals = [get_val(yr-1, mo, chart_metric) for yr, mo in sel_months]
-    else:
-        # Summary group - sum active campaigns
-        def get_group_val(yr, mo, field, group_names):
-            total = 0
-            for c in camp_data:
-                if c["name"] not in group_names:
-                    continue
-                yr_str = str(yr)
-                if yr_str in c["trend"]:
-                    total += c["trend"][yr_str].get(field,[0]*12)[mo]
-            return total
+                vals.append(camp_obj["trend"][yr_str].get(field,[0]*12)[mo])
+            else:
+                vals.append(0)
+        return vals
 
-        if selected_chart == "Total (All Active)":
-            group_names = [x["name"] for x in filtered]
-        elif "PMax" in selected_chart:
-            group_names = [x["name"] for x in filtered if isPmax(x["name"])]
-        elif "Search without Brand" in selected_chart:
-            group_names = [x["name"] for x in filtered if not isPmax(x["name"]) and not isBrand(x["name"])]
-        elif "Search" in selected_chart:
-            group_names = [x["name"] for x in filtered if not isPmax(x["name"])]
-        else:
-            group_names = [x["name"] for x in filtered]
+    def get_camp_ly_vals(camp_obj, field):
+        vals = []
+        for yr, mo in sel_months:
+            yr_str = str(yr-1)
+            if camp_obj and yr_str in camp_obj["trend"]:
+                vals.append(camp_obj["trend"][yr_str].get(field,[0]*12)[mo])
+            else:
+                vals.append(0)
+        return vals
 
-        if chart_metric == "roi":
-            def get_group_roi(yr, mo, gnames):
-                cost  = get_group_val(yr, mo, "cost",  gnames)
-                sales = get_group_val(yr, mo, "sales", gnames)
-                return (sales-cost)/cost*100 if cost>0 else 0
-            ty_vals = [get_group_roi(yr, mo, group_names) for yr, mo in sel_months]
-            ly_vals = [get_group_roi(yr-1, mo, group_names) for yr, mo in sel_months]
-        else:
-            ty_vals = [get_group_val(yr, mo, chart_metric, group_names) for yr, mo in sel_months]
-            ly_vals = [get_group_val(yr-1, mo, chart_metric, group_names) for yr, mo in sel_months]
+    def get_group_vals(group_names, field):
+        result = []
+        for yr, mo in sel_months:
+            yr_str = str(yr)
+            total = sum(
+                c["trend"][yr_str].get(field,[0]*12)[mo]
+                for c in camp_data
+                if c["name"] in group_names and yr_str in c["trend"]
+            )
+            result.append(total)
+        return result
+
+    def get_group_ly_vals(group_names, field):
+        result = []
+        for yr, mo in sel_months:
+            yr_str = str(yr-1)
+            total = sum(
+                c["trend"][yr_str].get(field,[0]*12)[mo]
+                for c in camp_data
+                if c["name"] in group_names and yr_str in c["trend"]
+            )
+            result.append(total)
+        return result
+
+    def roi_from_vals(cost_v, sales_v):
+        return [(s-c)/c*100 if c>0 else 0 for c,s in zip(cost_v, sales_v)]
+
+    all_names   = [x["name"] for x in filtered]
+    pmax_names  = [x["name"] for x in filtered if isPmax(x["name"])]
+    srch_names  = [x["name"] for x in filtered if not isPmax(x["name"])]
+    snb_names   = [x["name"] for x in filtered if not isPmax(x["name"]) and not isBrand(x["name"])]
+
+    # Build chart_data dict: key -> {ty, ly} for each field
+    def build_chart(names_or_obj, is_group=True):
+        d = {}
+        for f in ["clicks","cost","conv","leads","apt","cust","sales"]:
+            if is_group:
+                d[f]    = get_group_vals(names_or_obj, f)
+                d[f+"_ly"] = get_group_ly_vals(names_or_obj, f)
+            else:
+                d[f]    = get_camp_vals(names_or_obj, f)
+                d[f+"_ly"] = get_camp_ly_vals(names_or_obj, f)
+        d["roi"]    = roi_from_vals(d["cost"],    d["sales"])
+        d["roi_ly"] = roi_from_vals(d["cost_ly"], d["sales_ly"])
+        return d
+
+    charts = {
+        "__total__": build_chart(all_names),
+        "__pmax__":  build_chart(pmax_names) if pmax_names else None,
+        "__srch__":  build_chart(srch_names),
+        "__snb__":   build_chart(snb_names),
+    }
+    for c in camp_data:
+        charts[c["name"]] = build_chart(c, is_group=False)
 
     chart_json = json.dumps({
-        "labels": labels,
+        "labels":    labels,
         "ly_labels": ly_labels,
-        "ty": ty_vals,
-        "ly": ly_vals,
-        "title": selected_chart,
-        "metric": chart_metric,
+        "charts":    charts,
     })
     tab3_html = f"""
     <style>
@@ -973,34 +986,80 @@ with tab3:
       <tfoot style="border-top:2px solid #374151;">{foot_html}</tfoot>
     </table></div>
     <div class="cbox">
-      <div style="font-size:13px;font-weight:600;color:#111827;margin-bottom:10px;">{selected_chart} — Monthly Trend ({chart_metric})</div>
-      <div style="display:flex;gap:14px;margin-bottom:8px;">
-        <span class="legi"><span class="legd" style="background:#378ADD;display:inline-block;"></span> Selected period</span>
-        <span class="legi"><span class="legd" style="background:#B5D4F4;display:inline-block;"></span> Same period last year</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+        <div style="font-size:13px;font-weight:600;color:#111827;" id="t3cname">📊 Total (All Active) — Monthly Trend</div>
+        <div style="display:flex;gap:12px;">
+          <span class="legi"><span class="legd" style="background:#378ADD;display:inline-block;"></span>This period</span>
+          <span class="legi"><span class="legd" style="background:#B5D4F4;display:inline-block;"></span>Last year</span>
+        </div>
+      </div>
+      <div class="mtabs" id="metric-tabs">
+        <button class="mtab active" onclick="setMetric('clicks',this)">Clicks</button>
+        <button class="mtab" onclick="setMetric('cost',this)">Cost</button>
+        <button class="mtab" onclick="setMetric('conv',this)">Conversions</button>
+        <button class="mtab" onclick="setMetric('leads',this)">Leads</button>
+        <button class="mtab" onclick="setMetric('apt',this)">Appointments</button>
+        <button class="mtab" onclick="setMetric('cust',this)">Customers</button>
+        <button class="mtab" onclick="setMetric('sales',this)">Sales</button>
+        <button class="mtab" onclick="setMetric('roi',this)">ROI %</button>
       </div>
       <div style="position:relative;height:260px;"><canvas id="t3chart"></canvas></div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script>
     var CD={chart_json};
-    new Chart(document.getElementById('t3chart'),{{
-      type:'line',
-      data:{{
-        labels:CD.labels,
-        datasets:[
-          {{data:CD.ty,label:'This period',borderColor:'#378ADD',backgroundColor:'#378ADD22',fill:true,tension:0.3,pointRadius:4}},
-          {{data:CD.ly,label:'Last year',borderColor:'#B5D4F4',backgroundColor:'#B5D4F422',fill:true,tension:0.3,pointRadius:4,borderDash:[5,4]}}
-        ]
-      }},
-      options:{{
-        responsive:true,maintainAspectRatio:false,
-        plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:function(ctx){{return' '+ctx.parsed.y.toLocaleString(undefined,{{maximumFractionDigits:2}});}}}}}}}},
-        scales:{{
-          x:{{ticks:{{font:{{size:10}},maxRotation:45,autoSkip:true}},grid:{{display:false}}}},
-          y:{{min:0,ticks:{{font:{{size:10}},callback:function(v){{return v.toLocaleString();}}}},grid:{{color:'#f3f4f6'}}}}
-        }}
+    var selKey='__total__', curMetric='clicks', tc=null;
+
+    function setMetric(m,btn){{
+      curMetric=m;
+      document.querySelectorAll('.mtab').forEach(function(b){{b.classList.remove('active');}});
+      btn.classList.add('active');
+      updateChart();
+    }}
+
+    function t3sel(row,key,label){{
+      document.querySelectorAll('#t3body tr').forEach(function(r){{r.classList.remove('sel');}});
+      if(selKey===key){{
+        selKey='__total__';
+        document.getElementById('t3cname').textContent='📊 Total (All Active) — Monthly Trend';
+        updateChart();
+        return;
       }}
-    }});
+      row.classList.add('sel');
+      selKey=key;
+      document.getElementById('t3cname').textContent=label+' — Monthly Trend';
+      updateChart();
+    }}
+
+    function updateChart(){{
+      var d=CD.charts[selKey];
+      if(!d)return;
+      var isRoi=(curMetric==='roi');
+      var ty=d[curMetric]||[];
+      var ly=d[curMetric+'_ly']||[];
+      if(tc){{tc.destroy();tc=null;}}
+      tc=new Chart(document.getElementById('t3chart'),{{
+        type:'line',
+        data:{{
+          labels:CD.labels,
+          datasets:[
+            {{data:ty,borderColor:'#378ADD',backgroundColor:'#378ADD22',fill:true,tension:0.3,pointRadius:4}},
+            {{data:ly,borderColor:'#B5D4F4',backgroundColor:'#B5D4F422',fill:true,tension:0.3,pointRadius:4,borderDash:[5,4]}}
+          ]
+        }},
+        options:{{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:function(ctx){{
+            return isRoi?' '+ctx.parsed.y.toFixed(1)+'%':' '+ctx.parsed.y.toLocaleString(undefined,{{maximumFractionDigits:2}});
+          }}}}}}}}}},
+          scales:{{
+            x:{{ticks:{{font:{{size:10}},maxRotation:45,autoSkip:true}},grid:{{display:false}}}},
+            y:{{min:0,ticks:{{font:{{size:10}},callback:function(v){{return isRoi?v.toFixed(0)+'%':v.toLocaleString();}}}},grid:{{color:'#f3f4f6'}}}}
+          }}
+        }}
+      }});
+    }}
+    setTimeout(function(){{updateChart();}},100);
     </script>
     """
     st.components.v1.html(tab3_html, height=len(filtered)*36+680, scrolling=False)
