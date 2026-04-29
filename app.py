@@ -726,7 +726,7 @@ with tab3:
     import json
     from datetime import date
 
-    # ── Date range selectors (Python/Streamlit) ──────────────────────────────
+    # ── Date range selectors ──────────────────────────────────────────────────
     MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
     t3c1, t3c2, t3c3, t3c4, t3c5 = st.columns([1,1,0.3,1,1])
     with t3c1: t3_fm = st.selectbox("From Month", MONTHS, index=0, key="t3fm")
@@ -739,7 +739,7 @@ with tab3:
     tm_idx = MONTHS.index(t3_tm)
     st.caption(f"{t3_fm} {t3_fy} - {t3_tm} {t3_ty}")
 
-    # ── Load and filter campaign data in Python ───────────────────────────────
+    # ── Load campaign data ────────────────────────────────────────────────────
     camp_data = get_campaign_data()
 
     # Build selected months list
@@ -750,24 +750,29 @@ with tab3:
         mo += 1
         if mo > 11: mo = 0; yr += 1
 
-    # Filter and aggregate
+    def get_val(camp_obj, yr, mo, field):
+        yr_str = str(yr)
+        if yr_str in camp_obj["trend"]:
+            return camp_obj["trend"][yr_str].get(field, [0]*12)[mo]
+        return 0
+
+    # Filter and aggregate per campaign
+    def isPmax(n): return "performance max" in n.lower() or "pmax" in n.lower()
+    def isBrand(n): return "brand" in n.lower()
+
     filtered = []
     for c in camp_data:
         totals = {f:0.0 for f in ["clicks","cost","conv","leads","apt","cust","sales"]}
         for yr, mo in sel_months:
-            yr_str = str(yr)
-            if yr_str in c["trend"]:
-                for f in totals:
-                    totals[f] += c["trend"][yr_str].get(f,[0]*12)[mo]
-        # Only include if has any data
+            for f in totals:
+                totals[f] += get_val(c, yr, mo, f)
         if totals["cost"] > 0 or totals["clicks"] > 0 or totals["leads"] > 0:
-            roi = (totals["sales"] - totals["cost"]) / totals["cost"] * 100 if totals["cost"] > 0 else 0
-            cpc = totals["cost"] / totals["conv"] if totals["conv"] > 0 else 0
-            al  = totals["apt"]  / totals["leads"] * 100 if totals["leads"] > 0 else 0
-            oa  = totals["cust"] / totals["apt"]   * 100 if totals["apt"]   > 0 else 0
+            roi = (totals["sales"]-totals["cost"])/totals["cost"]*100 if totals["cost"]>0 else 0
+            cpc = totals["cost"]/totals["conv"] if totals["conv"]>0 else 0
+            al  = totals["apt"]/totals["leads"]*100 if totals["leads"]>0 else 0
+            oa  = totals["cust"]/totals["apt"]*100  if totals["apt"]>0  else 0
             filtered.append({**totals, "name":c["name"], "roi":roi, "cpc":cpc, "al":al, "oa":oa})
 
-    # Sort by Sales desc, then ROI desc
     filtered.sort(key=lambda x: (-x["sales"], -x["roi"]))
 
     # Averages for coloring
@@ -775,298 +780,226 @@ with tab3:
     avg_oa = sum(x["oa"] for x in filtered if x["oa"]>0) / max(len([x for x in filtered if x["oa"]>0]),1)
 
     # Summary groups
-    def isPmax(n): return "performance max" in n.lower() or "pmax" in n.lower()
-    def isBrand(n): return "brand" in n.lower()
+    all_names  = [x["name"] for x in filtered]
+    pmax_names = [x["name"] for x in filtered if isPmax(x["name"])]
+    srch_names = [x["name"] for x in filtered if not isPmax(x["name"])]
+    snb_names  = [x["name"] for x in filtered if not isPmax(x["name"]) and not isBrand(x["name"])]
 
-    tot   = {f:sum(x[f] for x in filtered) for f in ["clicks","cost","conv","leads","apt","cust","sales"]}
-    pmax  = {f:sum(x[f] for x in filtered if isPmax(x["name"]))  for f in ["clicks","cost","conv","leads","apt","cust","sales"]}
-    brand = {f:sum(x[f] for x in filtered if isBrand(x["name"]) and not isPmax(x["name"])) for f in ["clicks","cost","conv","leads","apt","cust","sales"]}
-    srch  = {f:tot[f]-pmax[f] for f in tot}
-    snb   = {f:srch[f]-brand[f] for f in srch}
+    def sum_group(names):
+        t = {f:0.0 for f in ["clicks","cost","conv","leads","apt","cust","sales"]}
+        for x in filtered:
+            if x["name"] in names:
+                for f in t: t[f] += x[f]
+        t["roi"]  = (t["sales"]-t["cost"])/t["cost"]*100 if t["cost"]>0 else 0
+        t["cpc"]  = t["cost"]/t["conv"] if t["conv"]>0 else 0
+        t["al"]   = t["apt"]/t["leads"]*100 if t["leads"]>0 else 0
+        t["oa"]   = t["cust"]/t["apt"]*100  if t["apt"]>0  else 0
+        return t
 
-    def calc_row(d):
-        return {
-            "roi": (d["sales"]-d["cost"])/d["cost"]*100 if d["cost"]>0 else 0,
-            "cpc": d["cost"]/d["conv"] if d["conv"]>0 else 0,
-            "al":  d["apt"]/d["leads"]*100 if d["leads"]>0 else 0,
-            "oa":  d["cust"]/d["apt"]*100  if d["apt"]>0  else 0,
-        }
+    tot  = sum_group(all_names)
+    pmax = sum_group(pmax_names)
+    srch = sum_group(srch_names)
+    snb  = sum_group(snb_names)
 
+    # ── Table HTML ────────────────────────────────────────────────────────────
     def money(n): return f"${n:,.0f}"
-    def fmt2(n):  return f"{n:,.2f}".rstrip("0").rstrip(".")
+    def fmt2(n):
+        try:
+            if n == 0: return "0"
+            return f"{n:,.2f}".rstrip("0").rstrip(".")
+        except: return "0"
     def colored(val, avg, suffix="%"):
         color = "#065f46" if val >= avg else "#991b1b"
         bg    = "#d1fae5" if val >= avg else "#fee2e2"
         return f'<span style="background:{bg};color:{color};padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;">{fmt2(val)}{suffix}</span>'
 
-    td_style = "text-align:right;padding:6px 8px;border-bottom:0.5px solid #f3f4f6;font-size:12px;"
-    th_style = "padding:8px 8px;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.04em;text-align:right;"
+    td = "text-align:right;padding:6px 8px;border-bottom:0.5px solid #f3f4f6;font-size:12px;"
 
-    def data_row(x, bg=""):
-        roi_c = colored(x["roi"], 0)
-        al_c  = colored(x["al"],  avg_al)
-        oa_c  = colored(x["oa"],  avg_oa)
-        return f"""<tr style="background:{bg};" onclick="t3sel(this,'{x['name'].replace("'","\'")}','{x['name'].replace("'","\'")}')">
-          <td style="text-align:left;padding:6px 8px;border-bottom:0.5px solid #f3f4f6;font-weight:500;font-size:12px;cursor:pointer;">{x['name']}</td>
-          <td style="{td_style}">{fmt2(x['clicks'])}</td>
-          <td style="{td_style}">{money(x['cost'])}</td>
-          <td style="{td_style}">{fmt2(x['conv'])}</td>
-          <td style="{td_style}">{"$"+fmt2(x['cpc']) if x['cpc']>0 else "—"}</td>
-          <td style="{td_style}">{fmt2(x['leads'])}</td>
-          <td style="{td_style}">{fmt2(x['apt'])}</td>
-          <td style="{td_style}">{fmt2(x['cust'])}</td>
-          <td style="{td_style}">{money(x['sales'])}</td>
-          <td style="{td_style}">{roi_c}</td>
-          <td style="{td_style}">{al_c}</td>
-          <td style="{td_style}">{oa_c}</td>
-        </tr>"""
+    def data_row(x, bg="", key=""):
+        k = key or x["name"]
+        safe = k.replace("'", "\\'").replace('"', '\\"')
+        lbl = x["name"].replace("'","\\'").replace('"','\\"')
+        return f'''<tr style="background:{bg};cursor:pointer;" onclick="selRow(this,'{safe}','{lbl}')">
+          <td style="text-align:left;padding:6px 8px;border-bottom:0.5px solid #f3f4f6;font-weight:500;font-size:12px;">{x["name"]}</td>
+          <td style="{td}">{fmt2(x["clicks"])}</td>
+          <td style="{td}">{money(x["cost"])}</td>
+          <td style="{td}">{fmt2(x["conv"])}</td>
+          <td style="{td}">{"$"+fmt2(x["cpc"]) if x["cpc"]>0 else "—"}</td>
+          <td style="{td}">{fmt2(x["leads"])}</td>
+          <td style="{td}">{fmt2(x["apt"])}</td>
+          <td style="{td}">{fmt2(x["cust"])}</td>
+          <td style="{td}">{money(x["sales"])}</td>
+          <td style="{td}">{colored(x["roi"],0)}</td>
+          <td style="{td}">{colored(x["al"],avg_al)}</td>
+          <td style="{td}">{colored(x["oa"],avg_oa)}</td>
+        </tr>'''
 
-    summary_keys = {
-        "🔵 PMax Total": "__pmax__",
-        "🟢 All Search (excl. PMax)": "__srch__",
-        "🟡 Search without Brand": "__snb__",
-    }
-    def summary_row(label, d, bg):
-        r = calc_row(d)
-        key = summary_keys.get(label, "__total__")
-        safe_label = label.replace("'","\'")
-        return f"""<tr style="background:{bg};font-weight:700;cursor:pointer;" onclick="t3sel(this,'{key}','{safe_label}')">
+    def sum_row(label, x, bg, key):
+        safe = key.replace("'","\\'")
+        lbl  = label.replace("'","\\'").replace('"','\\"')
+        return f'''<tr style="background:{bg};font-weight:700;cursor:pointer;" onclick="selRow(this,'{safe}','{lbl}')">
           <td style="text-align:left;padding:7px 8px;font-size:12px;">{label}</td>
-          <td style="{td_style}">{fmt2(d['clicks'])}</td>
-          <td style="{td_style}">{money(d['cost'])}</td>
-          <td style="{td_style}">{fmt2(d['conv'])}</td>
-          <td style="{td_style}">{"$"+fmt2(r['cpc']) if r['cpc']>0 else "—"}</td>
-          <td style="{td_style}">{fmt2(d['leads'])}</td>
-          <td style="{td_style}">{fmt2(d['apt'])}</td>
-          <td style="{td_style}">{fmt2(d['cust'])}</td>
-          <td style="{td_style}">{money(d['sales'])}</td>
-          <td style="{td_style}">{fmt2(r['roi'])}%</td>
-          <td style="{td_style}">{fmt2(r['al'])}%</td>
-          <td style="{td_style}">{fmt2(r['oa'])}%</td>
-        </tr>"""
+          <td style="{td}">{fmt2(x["clicks"])}</td>
+          <td style="{td}">{money(x["cost"])}</td>
+          <td style="{td}">{fmt2(x["conv"])}</td>
+          <td style="{td}">{"$"+fmt2(x["cpc"]) if x["cpc"]>0 else "—"}</td>
+          <td style="{td}">{fmt2(x["leads"])}</td>
+          <td style="{td}">{fmt2(x["apt"])}</td>
+          <td style="{td}">{fmt2(x["cust"])}</td>
+          <td style="{td}">{money(x["sales"])}</td>
+          <td style="{td}">{fmt2(x["roi"])}%</td>
+          <td style="{td}">{fmt2(x["al"])}%</td>
+          <td style="{td}">{fmt2(x["oa"])}%</td>
+        </tr>'''
 
-    # Total row at top - clickable
-    tot_roi_val = (tot["sales"]-tot["cost"])/tot["cost"]*100 if tot["cost"]>0 else 0
-    tot_al_val  = tot["apt"]/tot["leads"]*100 if tot["leads"]>0 else 0
-    tot_oa_val  = tot["cust"]/tot["apt"]*100  if tot["apt"]>0  else 0
-    tot_cpc_val = tot["cost"]/tot["conv"]     if tot["conv"]>0 else 0
-    total_click_row = f'''<tr style="background:#111827;color:#fff;font-weight:700;cursor:pointer;" onclick="t3sel(this,'__total__','📊 Total (All Active)')">
-      <td style="text-align:left;padding:7px 8px;font-size:12px;color:#fff;">📊 Total (All Active)</td>
-      <td style="text-align:right;padding:7px 8px;">{fmt2(tot["clicks"])}</td>
-      <td style="text-align:right;padding:7px 8px;">{money(tot["cost"])}</td>
-      <td style="text-align:right;padding:7px 8px;">{fmt2(tot["conv"])}</td>
-      <td style="text-align:right;padding:7px 8px;">{"$"+fmt2(tot_cpc_val) if tot_cpc_val>0 else "—"}</td>
-      <td style="text-align:right;padding:7px 8px;">{fmt2(tot["leads"])}</td>
-      <td style="text-align:right;padding:7px 8px;">{fmt2(tot["apt"])}</td>
-      <td style="text-align:right;padding:7px 8px;">{fmt2(tot["cust"])}</td>
-      <td style="text-align:right;padding:7px 8px;">{money(tot["sales"])}</td>
-      <td style="text-align:right;padding:7px 8px;">{fmt2(tot_roi_val)}%</td>
-      <td style="text-align:right;padding:7px 8px;">{fmt2(tot_al_val)}%</td>
-      <td style="text-align:right;padding:7px 8px;">{fmt2(tot_oa_val)}%</td>
-    </tr>'''
-    rows_html = total_click_row + "".join([data_row(x, "#fefce8" if i%5==1 else "") for i,x in enumerate(filtered)])
+    total_row = sum_row("📊 Total", tot, "#111827;color:#fff", "__total__")
+    rows_html = total_row + "".join([data_row(x,"#fefce8" if i%5==1 else "") for i,x in enumerate(filtered)])
 
     foot_html = ""
-    if pmax["cost"]>0 or pmax["clicks"]>0:
-        foot_html += summary_row("🔵 PMax Total", pmax, "#EFF6FF")
-    foot_html += summary_row("🟢 All Search (excl. PMax)", srch, "#F0FDF4")
-    foot_html += summary_row("🟡 Search without Brand",    snb,  "#FEFCE8")
+    if pmax_names: foot_html += sum_row("🔵 PMax Total", pmax, "#EFF6FF", "__pmax__")
+    foot_html += sum_row("🟢 All Search (excl. PMax)", srch, "#F0FDF4", "__srch__")
+    foot_html += sum_row("🟡 Search without Brand",    snb,  "#FEFCE8", "__snb__")
 
-    # Build camp_json for trend chart
-    trend_data = json.dumps([{"name":c["name"],"trend":c["trend"]} for c in camp_data])
-
-
-    # ── Pre-build all chart data in Python ───────────────────────────────────
-    labels    = [f"{MONTHS[mo]} {yr}"   for yr, mo in sel_months]
-    ly_labels = [f"{MONTHS[mo]} {yr-1}" for yr, mo in sel_months]
-
-    def get_camp_vals(camp_obj, field):
-        vals = []
-        for yr, mo in sel_months:
-            yr_str = str(yr)
-            if camp_obj and yr_str in camp_obj["trend"]:
-                vals.append(camp_obj["trend"][yr_str].get(field,[0]*12)[mo])
-            else:
-                vals.append(0)
-        return vals
-
-    def get_camp_ly_vals(camp_obj, field):
-        vals = []
-        for yr, mo in sel_months:
-            yr_str = str(yr-1)
-            if camp_obj and yr_str in camp_obj["trend"]:
-                vals.append(camp_obj["trend"][yr_str].get(field,[0]*12)[mo])
-            else:
-                vals.append(0)
-        return vals
-
-    def get_group_vals(group_names, field):
-        result = []
-        for yr, mo in sel_months:
-            yr_str = str(yr)
-            total = sum(
-                c["trend"][yr_str].get(field,[0]*12)[mo]
-                for c in camp_data
-                if c["name"] in group_names and yr_str in c["trend"]
-            )
-            result.append(total)
-        return result
-
-    def get_group_ly_vals(group_names, field):
-        result = []
-        for yr, mo in sel_months:
-            yr_str = str(yr-1)
-            total = sum(
-                c["trend"][yr_str].get(field,[0]*12)[mo]
-                for c in camp_data
-                if c["name"] in group_names and yr_str in c["trend"]
-            )
-            result.append(total)
-        return result
-
-    def roi_from_vals(cost_v, sales_v):
-        return [(s-c)/c*100 if c>0 else 0 for c,s in zip(cost_v, sales_v)]
-
-    all_names   = [x["name"] for x in filtered]
-    pmax_names  = [x["name"] for x in filtered if isPmax(x["name"])]
-    srch_names  = [x["name"] for x in filtered if not isPmax(x["name"])]
-    snb_names   = [x["name"] for x in filtered if not isPmax(x["name"]) and not isBrand(x["name"])]
-
-    # Build chart_data dict: key -> {ty, ly} for each field
-    def build_group(names):
-        d = {}
-        for f in ["clicks","cost","conv","leads","apt","cust","sales"]:
-            d[f]       = get_group_vals(names, f)
-            d[f+"_ly"] = get_group_ly_vals(names, f)
-        d["roi"]    = roi_from_vals(d["cost"],    d["sales"])
-        d["roi_ly"] = roi_from_vals(d["cost_ly"], d["sales_ly"])
-        return d
-
-    def build_camp(camp_obj):
-        d = {}
-        for f in ["clicks","cost","conv","leads","apt","cust","sales"]:
-            d[f]       = get_camp_vals(camp_obj, f)
-            d[f+"_ly"] = get_camp_ly_vals(camp_obj, f)
-        d["roi"]    = roi_from_vals(d["cost"],    d["sales"])
-        d["roi_ly"] = roi_from_vals(d["cost_ly"], d["sales_ly"])
-        return d
-
-    charts = {
-        "__total__": build_group(all_names),
-        "__srch__":  build_group(srch_names),
-        "__snb__":   build_group(snb_names),
-    }
-    if pmax_names:
-        charts["__pmax__"] = build_group(pmax_names)
+    # ── Build trend data ──────────────────────────────────────────────────────
+    trend_sets = {"__total__": all_names}
+    if pmax_names: trend_sets["__pmax__"] = pmax_names
+    trend_sets["__srch__"] = srch_names
+    trend_sets["__snb__"]  = snb_names
     for c in camp_data:
-        if any(x["name"] == c["name"] for x in filtered):
-            charts[c["name"]] = build_camp(c)
+        if any(x["name"]==c["name"] for x in filtered):
+            trend_sets[c["name"]] = c["name"]  # string = individual
 
-    chart_json = json.dumps({
-        "labels":    labels,
-        "ly_labels": ly_labels,
-        "charts":    charts,
-    })
+    def get_trend(key, field):
+        ty_vals, ly_vals = [], []
+        for yr, mo in sel_months:
+            if isinstance(trend_sets.get(key), list):
+                # group
+                names = trend_sets[key]
+                ty_v = sum(get_val(c, yr,   mo, field) for c in camp_data if c["name"] in names)
+                ly_v = sum(get_val(c, yr-1, mo, field) for c in camp_data if c["name"] in names)
+            else:
+                # individual
+                c = next((c for c in camp_data if c["name"]==key), None)
+                ty_v = get_val(c, yr,   mo, field) if c else 0
+                ly_v = get_val(c, yr-1, mo, field) if c else 0
+            ty_vals.append(ty_v)
+            ly_vals.append(ly_v)
+        return ty_vals, ly_vals
+
+    def get_roi_trend(key):
+        cost_ty,  cost_ly  = get_trend(key, "cost")
+        sales_ty, sales_ly = get_trend(key, "sales")
+        roi_ty = [(s-c)/c*100 if c>0 else 0 for c,s in zip(cost_ty, sales_ty)]
+        roi_ly = [(s-c)/c*100 if c>0 else 0 for c,s in zip(cost_ly, sales_ly)]
+        return roi_ty, roi_ly
+
+    chart_labels = [f"{MONTHS[mo]} {yr}" for yr,mo in sel_months]
+
+    # Pre-compute all trends for all keys
+    all_trends = {}
+    for key in trend_sets:
+        td2 = {}
+        for f in ["clicks","cost","conv","leads","apt","cust","sales"]:
+            ty, ly = get_trend(key, f)
+            td2[f]       = ty
+            td2[f+"_ly"] = ly
+        ty_r, ly_r = get_roi_trend(key)
+        td2["roi"]    = ty_r
+        td2["roi_ly"] = ly_r
+        all_trends[key] = td2
+
+    chart_json = json.dumps({"labels": chart_labels, "trends": all_trends})
+
     tab3_html = f"""
     <style>
+    body{{margin:0;font-family:sans-serif;}}
     .t3tbl{{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;}}
     .t3tbl thead tr{{background:#111827;}}
-    .t3tbl th{{padding:8px 8px;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;letter-spacing:0.04em;text-align:right;}}
+    .t3tbl th{{padding:8px;font-size:10px;font-weight:500;color:#9ca3af;text-transform:uppercase;text-align:right;}}
     .t3tbl th:first-child{{text-align:left;color:#fff;}}
-    .t3tbl tr.sel td{{background:#dbeafe !important;}}
+    .t3tbl tr.sel td,.t3tbl tr.sel th{{background:#dbeafe !important;color:#1e40af !important;}}
     .cbox{{background:#fff;border:0.5px solid #e5e7eb;border-radius:10px;padding:14px;margin-top:14px;}}
     .mtabs{{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}}
     .mtab{{font-size:11px;padding:4px 10px;border-radius:6px;border:0.5px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer;}}
-    .mtab.active{{background:#111827;color:#fff;border-color:#111827;}}
-    .legi{{display:flex;align-items:center;gap:4px;font-size:11px;color:#6b7280;margin-right:12px;}}
-    .legd{{width:10px;height:10px;border-radius:2px;}}
+    .mtab.active{{background:#111827;color:#fff;}}
+    .leg{{display:flex;gap:14px;align-items:center;}}
+    .legi{{display:flex;align-items:center;gap:4px;font-size:11px;color:#6b7280;}}
+    .legd{{width:10px;height:10px;border-radius:2px;display:inline-block;}}
     </style>
-    <div style="overflow-x:auto;margin-bottom:4px;">
+    <div style="overflow-x:auto;">
     <table class="t3tbl">
       <thead><tr>
-        <th style="text-align:left;color:#fff;">Campaign</th>
-        <th>Clicks</th><th>Cost</th><th>Conv.</th><th>Cost/Conv.</th>
+        <th style="text-align:left;color:#fff;min-width:180px;">Campaign</th>
+        <th>Clicks</th><th>Cost</th><th>Conv.</th><th>Cost/Conv</th>
         <th>Leads</th><th>Apt</th><th>Customers</th><th>Sales</th>
         <th>ROI</th><th>Apt/Lead</th><th>Order/Apt</th>
       </tr></thead>
       <tbody id="t3body">{rows_html}</tbody>
-      <tfoot style="border-top:2px solid #374151;">{foot_html}</tfoot>
+      <tfoot>{foot_html}</tfoot>
     </table></div>
     <div class="cbox">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
-        <div style="font-size:13px;font-weight:600;color:#111827;" id="t3cname">📊 Total (All Active) — Monthly Trend</div>
-        <div style="display:flex;gap:12px;">
-          <span class="legi"><span class="legd" style="background:#378ADD;display:inline-block;"></span>This period</span>
-          <span class="legi"><span class="legd" style="background:#B5D4F4;display:inline-block;"></span>Last year</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+        <div style="font-size:13px;font-weight:600;color:#111827;" id="t3title">📊 Total — Monthly Trend</div>
+        <div class="leg">
+          <span class="legi"><span class="legd" style="background:#378ADD;"></span>This period</span>
+          <span class="legi"><span class="legd" style="background:#B5D4F4;"></span>Last year</span>
         </div>
       </div>
-      <div class="mtabs" id="metric-tabs">
-        <button class="mtab active" onclick="setMetric('clicks',this)">Clicks</button>
-        <button class="mtab" onclick="setMetric('cost',this)">Cost</button>
-        <button class="mtab" onclick="setMetric('conv',this)">Conversions</button>
-        <button class="mtab" onclick="setMetric('leads',this)">Leads</button>
-        <button class="mtab" onclick="setMetric('apt',this)">Appointments</button>
-        <button class="mtab" onclick="setMetric('cust',this)">Customers</button>
-        <button class="mtab" onclick="setMetric('sales',this)">Sales</button>
-        <button class="mtab" onclick="setMetric('roi',this)">ROI %</button>
+      <div class="mtabs">
+        <button class="mtab active" onclick="setM('clicks',this)">Clicks</button>
+        <button class="mtab" onclick="setM('cost',this)">Cost</button>
+        <button class="mtab" onclick="setM('conv',this)">Conversions</button>
+        <button class="mtab" onclick="setM('leads',this)">Leads</button>
+        <button class="mtab" onclick="setM('apt',this)">Appointments</button>
+        <button class="mtab" onclick="setM('cust',this)">Customers</button>
+        <button class="mtab" onclick="setM('sales',this)">Sales</button>
+        <button class="mtab" onclick="setM('roi',this)">ROI %</button>
       </div>
-      <div style="position:relative;height:260px;"><canvas id="t3chart"></canvas></div>
+      <div style="position:relative;height:260px;"><canvas id="t3c"></canvas></div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script>
-    var CD={chart_json};
-    var selKey='__total__', curMetric='clicks', tc=null;
+    var D={chart_json};
+    var selKey='__total__', curM='clicks', ch=null;
 
-    function setMetric(m,btn){{
-      curMetric=m;
+    function selRow(row, key, label){{
+      if(selKey===key){{ selKey='__total__'; label='📊 Total'; }}
+      else{{ selKey=key; }}
+      document.querySelectorAll('#t3body tr, tfoot tr').forEach(function(r){{r.classList.remove('sel');}});
+      if(selKey!=='__total__') row.classList.add('sel');
+      document.getElementById('t3title').textContent=label+' — Monthly Trend';
+      draw();
+    }}
+    function setM(m,btn){{
+      curM=m;
       document.querySelectorAll('.mtab').forEach(function(b){{b.classList.remove('active');}});
       btn.classList.add('active');
-      updateChart();
+      draw();
     }}
-
-    function t3sel(row,key,label){{
-      document.querySelectorAll('#t3body tr').forEach(function(r){{r.classList.remove('sel');}});
-      if(selKey===key){{
-        selKey='__total__';
-        document.getElementById('t3cname').textContent='📊 Total (All Active) — Monthly Trend';
-        updateChart();
-        return;
-      }}
-      row.classList.add('sel');
-      selKey=key;
-      document.getElementById('t3cname').textContent=label+' — Monthly Trend';
-      updateChart();
-    }}
-
-    function updateChart(){{
-      var d=CD.charts[selKey];
-      if(!d)return;
-      var isRoi=(curMetric==='roi');
-      var ty=d[curMetric]||[];
-      var ly=d[curMetric+'_ly']||[];
-      if(tc){{tc.destroy();tc=null;}}
-      tc=new Chart(document.getElementById('t3chart'),{{
+    function draw(){{
+      var t=D.trends[selKey]||D.trends['__total__'];
+      var isR=curM==='roi';
+      var ty=t[curM]||[];
+      var ly=t[curM+'_ly']||[];
+      if(ch){{ch.destroy();ch=null;}}
+      ch=new Chart(document.getElementById('t3c'),{{
         type:'line',
-        data:{{
-          labels:CD.labels,
-          datasets:[
-            {{data:ty,borderColor:'#378ADD',backgroundColor:'#378ADD22',fill:true,tension:0.3,pointRadius:4}},
-            {{data:ly,borderColor:'#B5D4F4',backgroundColor:'#B5D4F422',fill:true,tension:0.3,pointRadius:4,borderDash:[5,4]}}
-          ]
-        }},
-        options:{{
-          responsive:true,maintainAspectRatio:false,
-          plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:function(ctx){{
-            return isRoi?' '+ctx.parsed.y.toFixed(1)+'%':' '+ctx.parsed.y.toLocaleString(undefined,{{maximumFractionDigits:2}});
+        data:{{labels:D.labels,datasets:[
+          {{data:ty,borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.1)',fill:true,tension:0.3,pointRadius:4}},
+          {{data:ly,borderColor:'#B5D4F4',backgroundColor:'rgba(181,212,244,0.1)',fill:true,tension:0.3,pointRadius:4,borderDash:[5,4]}}
+        ]}},
+        options:{{responsive:true,maintainAspectRatio:false,
+          plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:function(c){{
+            return isR?' '+c.parsed.y.toFixed(1)+'%':' '+c.parsed.y.toLocaleString(undefined,{{maximumFractionDigits:2}});
           }}}}}}}}}},
           scales:{{
             x:{{ticks:{{font:{{size:10}},maxRotation:45,autoSkip:true}},grid:{{display:false}}}},
-            y:{{min:0,ticks:{{font:{{size:10}},callback:function(v){{return isRoi?v.toFixed(0)+'%':v.toLocaleString();}}}},grid:{{color:'#f3f4f6'}}}}
+            y:{{min:0,ticks:{{font:{{size:10}},callback:function(v){{return isR?v.toFixed(0)+'%':v.toLocaleString();}}}},grid:{{color:'#f3f4f6'}}}}
           }}
         }}
       }});
     }}
-    setTimeout(function(){{updateChart();}},100);
+    draw();
     </script>
     """
-    st.components.v1.html(tab3_html, height=len(filtered)*36+680, scrolling=False)
+    st.components.v1.html(tab3_html, height=len(filtered)*34+640, scrolling=False)
