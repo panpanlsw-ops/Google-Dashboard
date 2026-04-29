@@ -933,27 +933,34 @@ with tab3:
     snb_names   = [x["name"] for x in filtered if not isPmax(x["name"]) and not isBrand(x["name"])]
 
     # Build chart_data dict: key -> {ty, ly} for each field
-    def build_chart(names_or_obj, is_group=True):
+    def build_group(names):
         d = {}
         for f in ["clicks","cost","conv","leads","apt","cust","sales"]:
-            if is_group:
-                d[f]    = get_group_vals(names_or_obj, f)
-                d[f+"_ly"] = get_group_ly_vals(names_or_obj, f)
-            else:
-                d[f]    = get_camp_vals(names_or_obj, f)
-                d[f+"_ly"] = get_camp_ly_vals(names_or_obj, f)
+            d[f]       = get_group_vals(names, f)
+            d[f+"_ly"] = get_group_ly_vals(names, f)
+        d["roi"]    = roi_from_vals(d["cost"],    d["sales"])
+        d["roi_ly"] = roi_from_vals(d["cost_ly"], d["sales_ly"])
+        return d
+
+    def build_camp(camp_obj):
+        d = {}
+        for f in ["clicks","cost","conv","leads","apt","cust","sales"]:
+            d[f]       = get_camp_vals(camp_obj, f)
+            d[f+"_ly"] = get_camp_ly_vals(camp_obj, f)
         d["roi"]    = roi_from_vals(d["cost"],    d["sales"])
         d["roi_ly"] = roi_from_vals(d["cost_ly"], d["sales_ly"])
         return d
 
     charts = {
-        "__total__": build_chart(all_names),
-        "__pmax__":  build_chart(pmax_names) if pmax_names else None,
-        "__srch__":  build_chart(srch_names),
-        "__snb__":   build_chart(snb_names),
+        "__total__": build_group(all_names),
+        "__srch__":  build_group(srch_names),
+        "__snb__":   build_group(snb_names),
     }
+    if pmax_names:
+        charts["__pmax__"] = build_group(pmax_names)
     for c in camp_data:
-        charts[c["name"]] = build_chart(c, is_group=False)
+        if any(x["name"] == c["name"] for x in filtered):
+            charts[c["name"]] = build_camp(c)
 
     chart_json = json.dumps({
         "labels":    labels,
