@@ -648,18 +648,18 @@ with tab2:
         detail_rows = ""
         if o["name"] in detail_data:
             detail_rows = f'<tr id="detail_{office_key}" style="display:none;"><td colspan="14" style="padding:0;"><table style="width:100%;border-collapse:collapse;background:#f8fafc;font-size:11px;">'
-            detail_rows += '<tr style="background:#e2e8f0;"><th style="text-align:left;padding:5px 16px;color:#475569;">Campaign</th><th style="text-align:right;padding:5px 8px;color:#475569;">Unique Leads</th><th style="text-align:right;padding:5px 8px;color:#475569;">New Leads</th><th style="text-align:right;padding:5px 8px;color:#475569;">Apt</th><th style="text-align:right;padding:5px 8px;color:#475569;">Quote</th><th style="text-align:right;padding:5px 8px;color:#475569;">Customers</th><th style="text-align:right;padding:5px 8px;color:#475569;">Sales</th></tr>'
+            detail_rows += '<tr style="background:#e2e8f0;"><th style="text-align:left;padding:8px 16px;color:#475569;font-size:13px;">Campaign</th><th style="text-align:right;padding:8px 10px;color:#475569;font-size:13px;">Unique Leads</th><th style="text-align:right;padding:8px 10px;color:#475569;font-size:13px;">New Leads</th><th style="text-align:right;padding:8px 10px;color:#475569;font-size:13px;">Apt</th><th style="text-align:right;padding:8px 10px;color:#475569;font-size:13px;">Quote</th><th style="text-align:right;padding:8px 10px;color:#475569;font-size:13px;">Customers</th><th style="text-align:right;padding:8px 10px;color:#475569;font-size:13px;">Sales</th></tr>'
             sorted_detail = sorted(detail_data[o["name"]], key=lambda x: (-x["ul"], -x["sales"]))
             for d in sorted_detail:
                 detail_rows += (
-                    f'<tr style="border-bottom:0.5px solid #e2e8f0;">' +
-                    f'<td style="padding:4px 16px;color:#374151;">{d["campaign"]}</td>' +
-                    f'<td style="text-align:right;padding:4px 8px;">{d["ul"]}</td>' +
-                    f'<td style="text-align:right;padding:4px 8px;">{d["nl"]}</td>' +
-                    f'<td style="text-align:right;padding:4px 8px;">{d["apt"]}</td>' +
-                    f'<td style="text-align:right;padding:4px 8px;">{d["quote"]}</td>' +
-                    f'<td style="text-align:right;padding:4px 8px;">{d["cust"]}</td>' +
-                    f'<td style="text-align:right;padding:4px 8px;">${d["sales"]:,.0f}</td>' +
+                    f'<tr style="border-bottom:0.5px solid #e2e8f0;font-size:13px;">' +
+                    f'<td style="padding:7px 16px;color:#374151;font-size:13px;font-weight:500;">{d["campaign"]}</td>' +
+                    f'<td style="text-align:right;padding:7px 10px;font-size:13px;">{d["ul"]}</td>' +
+                    f'<td style="text-align:right;padding:7px 10px;font-size:13px;">{d["nl"]}</td>' +
+                    f'<td style="text-align:right;padding:7px 10px;font-size:13px;">{d["apt"]}</td>' +
+                    f'<td style="text-align:right;padding:7px 10px;font-size:13px;">{d["quote"]}</td>' +
+                    f'<td style="text-align:right;padding:7px 10px;font-size:13px;">{d["cust"]}</td>' +
+                    f'<td style="text-align:right;padding:7px 10px;font-size:13px;">${d["sales"]:,.0f}</td>' +
                     f'</tr>'
                 )
             detail_rows += '</table></td></tr>'
