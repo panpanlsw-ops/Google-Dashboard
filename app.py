@@ -806,10 +806,11 @@ with tab3:
         return ty_v, ly_v
 
     def roi_trend(names_or_name):
-        ct, cs = trend(names_or_name,"cost")
-        st2, ss = trend(names_or_name,"sales")
-        return [(s-c)/c*100 if c>0 else 0 for c,s in zip(ct,ss)], \
-               [(s-c)/c*100 if c>0 else 0 for c,s in zip(cs,ss)]
+        cost_ty, cost_ly   = trend(names_or_name, "cost")
+        sales_ty, sales_ly = trend(names_or_name, "sales")
+        roi_ty = [(s-c)/c*100 if c>0 else 0 for c,s in zip(cost_ty, sales_ty)]
+        roi_ly = [(s-c)/c*100 if c>0 else 0 for c,s in zip(cost_ly, sales_ly)]
+        return roi_ty, roi_ly
 
     def build(names_or_name):
         d = {}
