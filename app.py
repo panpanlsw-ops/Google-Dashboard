@@ -917,55 +917,71 @@ with tab3:
     const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const TD={trend_data};
     const ACTIVE_NAMES={json.dumps([x['name'] for x in filtered])};
-    const FM={fm_idx};const FY={t3_fy};const TM={tm_idx};const TY={t3_ty};
+    const SEL_MONTHS={json.dumps([(yr, mo) for yr, mo in sel_months])};
+    const LY_MONTHS={json.dumps([(yr-1, mo) for yr, mo in sel_months])};
+    const SEL_LABELS={json.dumps([f"{MONTHS[mo]} {yr}" for yr, mo in sel_months])};
+    const FY={t3_fy};const TY={t3_ty};
     var selName=null,cm='clicks',tc=null;
 
-    function tv(name,y,f,m){{
-      var yr=String(y);
+    function tv(name,yr,f,mo){{
+      var y=String(yr);
       var c=TD.find(function(x){{return x.name===name;}});
-      if(!c||!c.trend||!c.trend[yr])return 0;
-      return c.trend[yr][f]?c.trend[yr][f][m]||0:0;
+      if(!c||!c.trend||!c.trend[y])return 0;
+      return c.trend[y][f]?c.trend[y][f][mo]||0:0;
     }}
-    function tvAll(y,f,m){{
+    function tvAll(yr,f,mo){{
       return TD.reduce(function(s,c){{
         if(ACTIVE_NAMES.indexOf(c.name)<0)return s;
-        var yr=String(y);
-        if(!c.trend||!c.trend[yr])return s;
-        return s+(c.trend[yr][f]?c.trend[yr][f][m]||0:0);
+        var y=String(yr);
+        if(!c.trend||!c.trend[y])return s;
+        return s+(c.trend[y][f]?c.trend[y][f][mo]||0:0);
       }},0);
     }}
-    function getMonths(a,b,c,d){{var r=[],mo=a,yr=b;while(yr<d||(yr===d&&mo<=c)){{r.push({{m:mo,y:yr}});mo++;if(mo>11){{mo=0;yr++;}}}}return r;}}
+    // SEL_MONTHS passed from Python - guaranteed correct
 
     function t3sel(row,name){{
       document.querySelectorAll('#t3body tr').forEach(function(r){{r.classList.remove('sel');}});
       if(selName===name){{selName=null;t3UC();return;}}
-      row.classList.add('sel');selName=name;
-      document.getElementById('t3cname').textContent=(name==='__total__'?'Total (All Active)':name)+' — Monthly Trend';
+      row.classList.add('sel');
+      selName=name;
       t3UC();
     }}
     function t3SM(m,btn){{cm=m;document.querySelectorAll('.mtab').forEach(function(b){{b.classList.remove('active');}});btn.classList.add('active');t3UC();}}
     function t3UC(){{
-      var months=getMonths(FM,FY,TM,TY);
-      var ly=months.map(function(p){{return{{m:p.m,y:p.y-1}};}});
-      var labels=months.map(function(p){{return MN[p.m]+' '+p.y;}});
-      var tyd,lyd;
+      var labels=SEL_LABELS;
+      var tyd,lyd,titleTxt;
       if(selName&&selName!=='__total__'){{
-        tyd=months.map(function(p){{return tv(selName,p.y,cm,p.m);}});
-        lyd=ly.map(function(p){{return tv(selName,p.y,cm,p.m);}});
+        tyd=SEL_MONTHS.map(function(p){{return tv(selName,p[0],cm,p[1]);}});
+        lyd=LY_MONTHS.map(function(p){{return tv(selName,p[0],cm,p[1]);}});
+        titleTxt=selName+' — Monthly Trend';
       }}else{{
-        tyd=months.map(function(p){{return tvAll(p.y,cm,p.m);}});
-        lyd=ly.map(function(p){{return tvAll(p.y,cm,p.m);}});
+        tyd=SEL_MONTHS.map(function(p){{return tvAll(p[0],cm,p[1]);}});
+        lyd=LY_MONTHS.map(function(p){{return tvAll(p[0],cm,p[1]);}});
+        titleTxt='All Active Campaigns — Monthly Trend';
       }}
-      document.getElementById('t3lty').textContent=FY+'–'+TY;
-      document.getElementById('t3lly').textContent=(FY-1)+'–'+(TY-1);
-      if(tc)tc.destroy();
-      tc=new Chart(document.getElementById('t3chart'),{{type:'line',data:{{labels:labels,datasets:[
-        {{data:tyd,borderColor:'#378ADD',backgroundColor:'#378ADD22',fill:true,tension:0.3,pointRadius:4}},
-        {{data:lyd,borderColor:'#B5D4F4',backgroundColor:'#B5D4F422',fill:true,tension:0.3,pointRadius:4,borderDash:[5,4]}}
-      ]}},options:{{responsive:true,maintainAspectRatio:false,plugins:{{legend:{{display:false}}}},scales:{{x:{{ticks:{{font:{{size:10}},maxRotation:45}},grid:{{display:false}}}},y:{{ticks:{{font:{{size:10}}}},grid:{{color:'#f3f4f6'}}}}}}}}}});
+      document.getElementById('t3cname').textContent=titleTxt;
+      document.getElementById('t3lty').textContent='Selected period';
+      document.getElementById('t3lly').textContent='Same period last year';
+      if(tc){{tc.destroy();tc=null;}}
+      var isR=(cm==='roi');
+      tc=new Chart(document.getElementById('t3chart'),{{
+        type:'line',
+        data:{{labels:labels,datasets:[
+          {{data:tyd,borderColor:'#378ADD',backgroundColor:'#378ADD22',fill:true,tension:0.3,pointRadius:4,pointHoverRadius:6}},
+          {{data:lyd,borderColor:'#B5D4F4',backgroundColor:'#B5D4F422',fill:true,tension:0.3,pointRadius:4,pointHoverRadius:6,borderDash:[5,4]}}
+        ]}},
+        options:{{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:function(ctx){{return isR?' '+ctx.parsed.y.toFixed(1)+'%':' '+ctx.parsed.y.toLocaleString();}}}}}}}},
+          scales:{{
+            x:{{ticks:{{font:{{size:10}},maxRotation:45,autoSkip:true}},grid:{{display:false}}}},
+            y:{{min:0,ticks:{{font:{{size:10}},callback:function(v){{return isR?v+'%':v.toLocaleString();}}}},grid:{{color:'#f3f4f6'}}}}
+          }}
+        }}
+      }});
     }}
-    // Show all campaigns on load
-    t3UC();
+    // Initialize chart with all campaigns on load
+    setTimeout(function(){{t3UC();}},200);
     </script>
     """
     st.components.v1.html(tab3_html, height=len(filtered)*36+680, scrolling=False)
