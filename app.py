@@ -632,7 +632,7 @@ with tab2:
         ol_val = to_float(ol_str)
         ol_badge = pct_badge(ol_str, avg_ol, ("#d1fae5","#065f46")) if ol_val >= avg_ol and ol_val > 0                    else f'<span style="font-size:11px;color:#374151;">{ol_str}</span>' 
 
-        td = "text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#374151;"
+        td = "text-align:right;padding:9px 12px;border-bottom:0.5px solid #f3f4f6;color:#374151;font-size:14px;"
 
         # Color bars for % columns
         try: lp_num = float(lp_str.replace("%","").strip())
@@ -668,7 +668,7 @@ with tab2:
         expand_btn = f'<span onclick="toggleDetail(\'{office_key}\')" style="cursor:pointer;margin-left:6px;font-size:11px;color:#6b7280;" id="btn_{office_key}">{"▶" if has_detail else ""}</span>' if has_detail else ""
 
         rows_html += f"""<tr onclick="{'toggleDetail(\''+office_key+'\')' if has_detail else ''}" style="cursor:{'pointer' if has_detail else 'default'};">
-          <td style="text-align:left;font-weight:500;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;color:#111827;">{o["name"]}{expand_btn}</td>
+          <td style="text-align:left;font-weight:500;padding:9px 12px;border-bottom:0.5px solid #f3f4f6;color:#111827;font-size:14px;">{o["name"]}{expand_btn}</td>
           <td style="{td}">{o["ul"]}</td>
           <td style="{td}">{o["nl"]}</td>
           <td style="{td}">{o["apt"]}</td>
@@ -684,7 +684,7 @@ with tab2:
           <td style="text-align:right;padding:7px 10px;border-bottom:0.5px solid #f3f4f6;">{ol_badge}</td>
         </tr>""" + detail_rows
 
-    th = "padding:9px 10px;font-size:11px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase;white-space:nowrap;"
+    th = "padding:10px 12px;font-size:12px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase;white-space:nowrap;"
     date_label = f"{month_name} 1–{yesterday.day}, {year}"
 
     tab2_html = f"""
@@ -712,15 +712,15 @@ with tab2:
       </tr></thead>
       <tbody>{rows_html}</tbody>
       <tfoot><tr style="background:#f8f9fa;font-weight:600;border-top:0.5px solid #e5e7eb;">
-        <td style="padding:8px 10px;text-align:left;color:#111827;">Total</td>
-        <td style="padding:8px 10px;text-align:right;color:#111827;">{total_ul}</td>
-        <td style="padding:8px 10px;text-align:right;color:#111827;">{total_nl}</td>
-        <td style="padding:8px 10px;text-align:right;color:#111827;">{total_apt}</td>
-        <td style="padding:8px 10px;text-align:right;color:#111827;">{total_quote}</td>
-        <td style="padding:8px 10px;text-align:right;color:#111827;">{total_cust}</td>
-        <td style="padding:8px 10px;text-align:right;color:#111827;">{money(total_sales)}</td>
-        <td style="padding:8px 10px;text-align:right;color:#111827;">{total_nlc}</td>
-        <td style="padding:8px 10px;text-align:right;color:#111827;">{money(total_nls)}</td>
+        <td style="padding:10px 12px;text-align:left;color:#111827;font-size:14px;font-weight:700;">Total</td>
+        <td style="padding:10px 12px;text-align:right;color:#111827;font-size:14px;font-weight:700;">{total_ul}</td>
+        <td style="padding:10px 12px;text-align:right;color:#111827;font-size:14px;font-weight:700;">{total_nl}</td>
+        <td style="padding:10px 12px;text-align:right;color:#111827;font-size:14px;font-weight:700;">{total_apt}</td>
+        <td style="padding:10px 12px;text-align:right;color:#111827;font-size:14px;font-weight:700;">{total_quote}</td>
+        <td style="padding:10px 12px;text-align:right;color:#111827;font-size:14px;font-weight:700;">{total_cust}</td>
+        <td style="padding:10px 12px;text-align:right;color:#111827;font-size:14px;font-weight:700;">{money(total_sales)}</td>
+        <td style="padding:10px 12px;text-align:right;color:#111827;font-size:14px;font-weight:700;">{total_nlc}</td>
+        <td style="padding:10px 12px;text-align:right;color:#111827;font-size:14px;font-weight:700;">{money(total_nls)}</td>
         <td colspan="5"></td>
       </tr></tfoot>
     </table></div>
