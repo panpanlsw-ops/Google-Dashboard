@@ -77,7 +77,7 @@ def get_data(campaign: str) -> dict:
         "ty_apt","ty_cust","ty_cpl","ty_cpa","ty_roi",
         "ly_conv","ly_cost","ly_leads","ly_apt","ly_cust","ly_cpl","ly_cpa","ly_roi",
         "lyf_conv","lyf_cost","lyf_leads","lyf_apt","lyf_cust",
-        "bud_conv","bud_cost",
+        "bud_cost",
         "lm_leads","lm_apt",
         "date",
     ]
@@ -143,7 +143,7 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
         "ty_apt","ty_cust","ty_cpl","ty_cpa","ty_roi",
         "ly_conv","ly_cost","ly_leads","ly_apt","ly_cust","ly_cpl","ly_cpa","ly_roi",
         "lyf_conv","lyf_cost","lyf_leads","lyf_apt","lyf_cust",
-        "bud_conv","bud_cost",
+        "bud_cost",
         "lm_leads","lm_apt",
         "date",
     ]
