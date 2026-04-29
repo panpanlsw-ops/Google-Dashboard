@@ -511,9 +511,9 @@ with tab1:
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
       {"".join([
         f'<div style="background:#fff;border:0.5px solid #e5e7eb;border-radius:10px;padding:14px;{span}">'
-        f'<div style="font-size:11px;font-weight:500;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">{title}</div>'
+        f'<div style="font-size:13px;font-weight:500;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">{title}</div>'
         f'<div style="display:flex;gap:12px;margin-bottom:8px;">'
-        f'<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#6b7280;"><span style="width:10px;height:10px;border-radius:2px;background:{cy};display:inline-block;"></span>This year MTD</span>'
+        f'<span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#6b7280;"><span style="width:10px;height:10px;border-radius:2px;background:{cy};display:inline-block;"></span>This year MTD</span>'
         f'<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#6b7280;"><span style="width:10px;height:10px;border-radius:2px;background:{lc};display:inline-block;"></span>Last year MTD</span>'
         f'</div><div style="position:relative;height:190px;"><canvas id="{cid}"></canvas></div></div>'
         for title,cid,cy,lc,span in [
