@@ -27,6 +27,31 @@ try:
 except:
     CAMPAIGNS = {"all": "All campaigns"}
 
+# Short display names for charts
+CAMP_SHORT = {
+    "(TWC) LifeSource Brand":               "Brand",
+    "AZ - Tucson Single Form":              "Tucson",
+    "Arizona Single Form":                  "Arizona",
+    "Bay Area Single Form":                 "Bay Area",
+    "Competitors - USA":                    "Competitors",
+    "Competitors - USA New":                "Competitors New",
+    "Demand Gen -Prospecting and Retargeting": "Demand Gen",
+    "Fresno Single Form":                   "Fresno",
+    "IE - Palm Springs Single Form":        "Palm Springs",
+    "Inland Empire Single Form":            "Inland Empire",
+    "Las Vegas Single Form":                "Las Vegas",
+    "Orange County Single Form":            "Orange County",
+    "PMAX 1 - LA":                          "Pmax1",
+    "PMAX 2 - NoCal":                       "Pmax2",
+    "Pasadena Single Form":                 "Pasadena",
+    "RLSA - All":                           "RLSA",
+    "Sacramento Single Form":               "Sacramento",
+    "San Antonio Single Form":              "San Antonio",
+    "San Diego Single Form":                "San Diego",
+    "Ventura County Single Form":           "Ventura",
+}
+def short(name): return CAMP_SHORT.get(name, name)
+
 st.markdown("""
 <style>
     .metric-card { background:#ffffff; border:0.5px solid #e5e7eb; border-radius:10px; overflow:hidden; min-height:160px; margin-bottom:4px; }
@@ -467,7 +492,7 @@ with tab1:
                 ty_vals.append(r["ty"].get(field_ty, 0))
                 ly_vals.append(r["ly"].get(field_ly, 0))
             return ty_vals, ly_vals
-        labels = all_camp_names
+        labels = [short(n) for n in all_camp_names]
     else:
         def get_series(field_ty, field_ly):
             r = get_roi_data(campaign, roi_start, roi_end)
