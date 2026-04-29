@@ -868,6 +868,85 @@ with tab3:
     # Build camp_json for trend chart
     trend_data = json.dumps([{"name":c["name"],"trend":c["trend"]} for c in camp_data])
 
+
+    # ── Trend chart - Python calculated ──────────────────────────────────────
+    chart_groups = {"Total (All Active)": tot}
+    if pmax["cost"]>0 or pmax["clicks"]>0:
+        chart_groups["🔵 PMax Total"] = pmax
+    chart_groups["🟢 All Search (excl. PMax)"] = srch
+    chart_groups["🟡 Search without Brand"] = snb
+    for x in filtered:
+        chart_groups[x["name"]] = None  # None = use trend data
+
+    selected_chart = st.selectbox("Show trend for:", list(chart_groups.keys()), key="t3_chart_sel")
+
+    # Build monthly data for selected
+    MONTH_NAMES_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    chart_metric = st.radio("Metric:", ["clicks","cost","conv","leads","apt","cust","sales","roi"], horizontal=True, key="t3_metric")
+
+    labels = [f"{MONTHS[mo]} {yr}" for yr, mo in sel_months]
+    ly_labels = [f"{MONTHS[mo]} {yr-1}" for yr, mo in sel_months]
+
+    if chart_groups[selected_chart] is None:
+        # Individual campaign - use trend data
+        camp_obj = next((c for c in camp_data if c["name"]==selected_chart), None)
+        def get_val(yr, mo, field):
+            yr_str = str(yr)
+            if camp_obj and yr_str in camp_obj["trend"]:
+                return camp_obj["trend"][yr_str].get(field,[0]*12)[mo]
+            return 0
+        if chart_metric == "roi":
+            def get_roi(yr, mo):
+                cost  = get_val(yr, mo, "cost")
+                sales = get_val(yr, mo, "sales")
+                return (sales-cost)/cost*100 if cost>0 else 0
+            ty_vals = [get_roi(yr, mo) for yr, mo in sel_months]
+            ly_vals = [get_roi(yr-1, mo) for yr, mo in sel_months]
+        else:
+            ty_vals = [get_val(yr, mo, chart_metric) for yr, mo in sel_months]
+            ly_vals = [get_val(yr-1, mo, chart_metric) for yr, mo in sel_months]
+    else:
+        # Summary group - sum active campaigns
+        def get_group_val(yr, mo, field, group_names):
+            total = 0
+            for c in camp_data:
+                if c["name"] not in group_names:
+                    continue
+                yr_str = str(yr)
+                if yr_str in c["trend"]:
+                    total += c["trend"][yr_str].get(field,[0]*12)[mo]
+            return total
+
+        if selected_chart == "Total (All Active)":
+            group_names = [x["name"] for x in filtered]
+        elif "PMax" in selected_chart:
+            group_names = [x["name"] for x in filtered if isPmax(x["name"])]
+        elif "Search without Brand" in selected_chart:
+            group_names = [x["name"] for x in filtered if not isPmax(x["name"]) and not isBrand(x["name"])]
+        elif "Search" in selected_chart:
+            group_names = [x["name"] for x in filtered if not isPmax(x["name"])]
+        else:
+            group_names = [x["name"] for x in filtered]
+
+        if chart_metric == "roi":
+            def get_group_roi(yr, mo, gnames):
+                cost  = get_group_val(yr, mo, "cost",  gnames)
+                sales = get_group_val(yr, mo, "sales", gnames)
+                return (sales-cost)/cost*100 if cost>0 else 0
+            ty_vals = [get_group_roi(yr, mo, group_names) for yr, mo in sel_months]
+            ly_vals = [get_group_roi(yr-1, mo, group_names) for yr, mo in sel_months]
+        else:
+            ty_vals = [get_group_val(yr, mo, chart_metric, group_names) for yr, mo in sel_months]
+            ly_vals = [get_group_val(yr-1, mo, chart_metric, group_names) for yr, mo in sel_months]
+
+    chart_json = json.dumps({
+        "labels": labels,
+        "ly_labels": ly_labels,
+        "ty": ty_vals,
+        "ly": ly_vals,
+        "title": selected_chart,
+        "metric": chart_metric,
+    })
     tab3_html = f"""
     <style>
     .t3tbl{{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;}}
@@ -894,94 +973,34 @@ with tab3:
       <tfoot style="border-top:2px solid #374151;">{foot_html}</tfoot>
     </table></div>
     <div class="cbox">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
-        <div style="font-size:13px;font-weight:500;color:#111827;" id="t3cname">Click a campaign to see trend</div>
-        <div style="display:flex;">
-          <span class="legi"><span class="legd" style="background:#378ADD;"></span><span id="t3lty">This period</span></span>
-          <span class="legi"><span class="legd" style="background:#B5D4F4;"></span><span id="t3lly">Last period</span></span>
-        </div>
+      <div style="font-size:13px;font-weight:600;color:#111827;margin-bottom:10px;">{selected_chart} — Monthly Trend ({chart_metric})</div>
+      <div style="display:flex;gap:14px;margin-bottom:8px;">
+        <span class="legi"><span class="legd" style="background:#378ADD;display:inline-block;"></span> Selected period</span>
+        <span class="legi"><span class="legd" style="background:#B5D4F4;display:inline-block;"></span> Same period last year</span>
       </div>
-      <div class="mtabs">
-        <button class="mtab active" onclick="t3SM('clicks',this)">Clicks</button>
-        <button class="mtab" onclick="t3SM('cost',this)">Cost</button>
-        <button class="mtab" onclick="t3SM('conv',this)">Conversions</button>
-        <button class="mtab" onclick="t3SM('leads',this)">Leads</button>
-        <button class="mtab" onclick="t3SM('apt',this)">Appointments</button>
-        <button class="mtab" onclick="t3SM('sales',this)">Sales</button>
-        <button class="mtab" onclick="t3SM('roi',this)">ROI %</button>
-      </div>
-      <div style="position:relative;height:240px;"><canvas id="t3chart"></canvas></div>
+      <div style="position:relative;height:260px;"><canvas id="t3chart"></canvas></div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script>
-    const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const TD={trend_data};
-    const ACTIVE_NAMES={json.dumps([x['name'] for x in filtered])};
-    const SEL_MONTHS={json.dumps([(yr, mo) for yr, mo in sel_months])};
-    const LY_MONTHS={json.dumps([(yr-1, mo) for yr, mo in sel_months])};
-    const SEL_LABELS={json.dumps([f"{MONTHS[mo]} {yr}" for yr, mo in sel_months])};
-    const FY={t3_fy};const TY={t3_ty};
-    var selName=null,cm='clicks',tc=null;
-
-    function tv(name,yr,f,mo){{
-      var y=String(yr);
-      var c=TD.find(function(x){{return x.name===name;}});
-      if(!c||!c.trend||!c.trend[y])return 0;
-      return c.trend[y][f]?c.trend[y][f][mo]||0:0;
-    }}
-    function tvAll(yr,f,mo){{
-      return TD.reduce(function(s,c){{
-        if(ACTIVE_NAMES.indexOf(c.name)<0)return s;
-        var y=String(yr);
-        if(!c.trend||!c.trend[y])return s;
-        return s+(c.trend[y][f]?c.trend[y][f][mo]||0:0);
-      }},0);
-    }}
-    // SEL_MONTHS passed from Python - guaranteed correct
-
-    function t3sel(row,name){{
-      document.querySelectorAll('#t3body tr').forEach(function(r){{r.classList.remove('sel');}});
-      if(selName===name){{selName=null;t3UC();return;}}
-      row.classList.add('sel');
-      selName=name;
-      t3UC();
-    }}
-    function t3SM(m,btn){{cm=m;document.querySelectorAll('.mtab').forEach(function(b){{b.classList.remove('active');}});btn.classList.add('active');t3UC();}}
-    function t3UC(){{
-      var labels=SEL_LABELS;
-      var tyd,lyd,titleTxt;
-      if(selName&&selName!=='__total__'){{
-        tyd=SEL_MONTHS.map(function(p){{return tv(selName,p[0],cm,p[1]);}});
-        lyd=LY_MONTHS.map(function(p){{return tv(selName,p[0],cm,p[1]);}});
-        titleTxt=selName+' — Monthly Trend';
-      }}else{{
-        tyd=SEL_MONTHS.map(function(p){{return tvAll(p[0],cm,p[1]);}});
-        lyd=LY_MONTHS.map(function(p){{return tvAll(p[0],cm,p[1]);}});
-        titleTxt='All Active Campaigns — Monthly Trend';
-      }}
-      document.getElementById('t3cname').textContent=titleTxt;
-      document.getElementById('t3lty').textContent='Selected period';
-      document.getElementById('t3lly').textContent='Same period last year';
-      if(tc){{tc.destroy();tc=null;}}
-      var isR=(cm==='roi');
-      tc=new Chart(document.getElementById('t3chart'),{{
-        type:'line',
-        data:{{labels:labels,datasets:[
-          {{data:tyd,borderColor:'#378ADD',backgroundColor:'#378ADD22',fill:true,tension:0.3,pointRadius:4,pointHoverRadius:6}},
-          {{data:lyd,borderColor:'#B5D4F4',backgroundColor:'#B5D4F422',fill:true,tension:0.3,pointRadius:4,pointHoverRadius:6,borderDash:[5,4]}}
-        ]}},
-        options:{{
-          responsive:true,maintainAspectRatio:false,
-          plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:function(ctx){{return isR?' '+ctx.parsed.y.toFixed(1)+'%':' '+ctx.parsed.y.toLocaleString();}}}}}}}},
-          scales:{{
-            x:{{ticks:{{font:{{size:10}},maxRotation:45,autoSkip:true}},grid:{{display:false}}}},
-            y:{{min:0,ticks:{{font:{{size:10}},callback:function(v){{return isR?v+'%':v.toLocaleString();}}}},grid:{{color:'#f3f4f6'}}}}
-          }}
+    var CD={chart_json};
+    new Chart(document.getElementById('t3chart'),{{
+      type:'line',
+      data:{{
+        labels:CD.labels,
+        datasets:[
+          {{data:CD.ty,label:'This period',borderColor:'#378ADD',backgroundColor:'#378ADD22',fill:true,tension:0.3,pointRadius:4}},
+          {{data:CD.ly,label:'Last year',borderColor:'#B5D4F4',backgroundColor:'#B5D4F422',fill:true,tension:0.3,pointRadius:4,borderDash:[5,4]}}
+        ]
+      }},
+      options:{{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:function(ctx){{return' '+ctx.parsed.y.toLocaleString(undefined,{{maximumFractionDigits:2}});}}}}}}}},
+        scales:{{
+          x:{{ticks:{{font:{{size:10}},maxRotation:45,autoSkip:true}},grid:{{display:false}}}},
+          y:{{min:0,ticks:{{font:{{size:10}},callback:function(v){{return v.toLocaleString();}}}},grid:{{color:'#f3f4f6'}}}}
         }}
-      }});
-    }}
-    // Initialize chart with all campaigns on load
-    setTimeout(function(){{t3UC();}},200);
+      }}
+    }});
     </script>
     """
     st.components.v1.html(tab3_html, height=len(filtered)*36+680, scrolling=False)
