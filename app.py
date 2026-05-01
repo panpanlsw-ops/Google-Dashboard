@@ -107,9 +107,10 @@ def metric_card(label, value, accent="blue", sub=None, pace_val=None,
 # ── Dates ─────────────────────────────────────────────────────────────────────
 today         = date.today()
 yesterday     = today - timedelta(days=1)
-day_of_month  = today.day
-days_in_month = calendar.monthrange(today.year, today.month)[1]
-days_left     = days_in_month - day_of_month
+# Pace based on yesterday's date since data is as of yesterday
+day_of_month  = yesterday.day
+days_in_month = calendar.monthrange(yesterday.year, yesterday.month)[1]
+days_left     = days_in_month - yesterday.day
 month_name    = today.strftime("%b")
 year          = today.year
 last_year     = year - 1
@@ -561,7 +562,17 @@ with tab1:
 # TAB 2 — Regional Offices
 # ══════════════════════════════════════════════════════════════════════════════
 with tab2:
-    offices     = get_regional_data(roi_start, roi_end)
+    MONTHS_T2 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    MONTH_NUM = {m:i+1 for i,m in enumerate(MONTHS_T2)}
+    t2c1,t2c2,t2c3,t2c4,t2c5 = st.columns([1,1,0.3,1,1])
+    with t2c1: t2_fm = st.selectbox("From Month", MONTHS_T2, index=0, key="t2fm")
+    with t2c2: t2_fy = st.selectbox("From Year", [2025,2026], index=0, key="t2fy")
+    with t2c3: st.markdown("<div style='padding-top:28px;text-align:center;color:#6b7280;'>to</div>", unsafe_allow_html=True)
+    with t2c4: t2_tm = st.selectbox("To Month", MONTHS_T2, index=MONTHS_T2.index(today.strftime("%b")), key="t2tm")
+    with t2c5: t2_ty = st.selectbox("To Year", [2025,2026], index=1, key="t2ty")
+    st.caption(f"{t2_fm} {t2_fy} – {t2_tm} {t2_ty}")
+
+    offices = get_regional_data(t2_fy, MONTH_NUM[t2_fm], t2_ty, MONTH_NUM[t2_tm])
     total_ul    = sum(o["ul"]    for o in offices)
     total_nl    = sum(o["nl"]    for o in offices)
     total_apt   = sum(o["apt"]   for o in offices)
@@ -710,7 +721,7 @@ with tab2:
         </tr>""" + detail_rows
 
     th = "padding:10px 12px;font-size:12px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase;white-space:nowrap;"
-    date_label = f"{month_name} 1–{yesterday.day}, {year}"
+    date_label = f"{t2_fm} {t2_fy} – {t2_tm} {t2_ty}"
 
     tab2_html = f"""
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
