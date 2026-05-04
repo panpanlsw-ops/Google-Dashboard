@@ -569,8 +569,8 @@ with tab2:
     t2ca, t2cb = st.columns([3,1])
     with t2ca:
         t2c1,t2c2,t2c3,t2c4,t2c5 = st.columns([1,1,0.3,1,1])
-        with t2c1: t2_fm = st.selectbox("From Month", MONTHS_T2, index=0, key="t2fm")
-        with t2c2: t2_fy = st.selectbox("From Year", [2025,2026], index=0, key="t2fy")
+        with t2c1: t2_fm = st.selectbox("From Month", MONTHS_T2, index=MONTHS_T2.index(yesterday.strftime("%b")), key="t2fm")
+        with t2c2: t2_fy = st.selectbox("From Year", [2025,2026], index=[2025,2026].index(yesterday.year), key="t2fy")
         with t2c3: st.markdown("<div style='padding-top:28px;text-align:center;color:#6b7280;'>to</div>", unsafe_allow_html=True)
         with t2c4: t2_tm = st.selectbox("To Month", MONTHS_T2, index=MONTHS_T2.index(yesterday.strftime("%b")), key="t2tm")
         with t2c5: t2_ty = st.selectbox("To Year", [2025,2026], index=[2025,2026].index(yesterday.year), key="t2ty")
