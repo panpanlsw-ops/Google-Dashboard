@@ -264,44 +264,57 @@ def get_regional_detail(from_year=None, from_month=None, to_year=None, to_month=
         return {}
 
 @st.cache_data(ttl=300)
-def get_regional_data(start_date: date, end_date: date) -> list:
+def get_regional_data(from_year=None, from_month=None, to_year=None, to_month=None) -> list:
     df = pd.read_excel(_excel_path(), sheet_name="Tab2_Regional", header=3)
-    # Rename using actual column names
     col_map = {
-        "Regional Office":    "name",
-        "Unique Leads":       "ul",
-        "New Leads":          "nl",
-        "Apt":                "apt",
-        "Quote":              "quote",
-        "Customers":          "cust",
-        "Sales Amount":       "sales",
-        "NL Customers":       "nlc",
-        "NL Sales":           "nl_sales",
-        "% of Total":         "leads_pct",
-        "$ Sales % of Total": "sales_pct",
-        "Apt/Leads":          "apt_leads",
-        "Order/Apt":          "order_apt",
-        "Order/Leads":        "order_leads",
+        "Regional Office":"name","Year":"year","Month":"month",
+        "Unique Leads":"ul","New Leads":"nl","Apt":"apt","Quote":"quote",
+        "Customers":"cust","Sales Amount":"sales","NL Customers":"nlc","NL Sales":"nl_sales",
+        "% of Total":"leads_pct","$ Sales % of Total":"sales_pct",
+        "Apt/Leads":"apt_leads","Order/Apt":"order_apt","Order/Leads":"order_leads",
     }
     df = df.rename(columns={c: col_map[c] for c in df.columns if c in col_map})
     df = df.dropna(subset=["name"])
-    df = df[~df["name"].astype(str).str.contains("row|update|office|regional", case=False, na=False)]
+    df = df[~df["name"].astype(str).str.contains("row|update|office|regional|add new", case=False, na=False)]
 
-    result = []
+    MONTH_MAP = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
+                 "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12}
+
+    # Filter by date range if provided
+    if from_year and to_year and "year" in df.columns and "month" in df.columns:
+        def in_range(row):
+            try:
+                yr = int(float(row["year"]))
+                mo = MONTH_MAP.get(str(row["month"]).strip(), 0)
+                return (from_year*100+from_month) <= (yr*100+mo) <= (to_year*100+to_month)
+            except: return False
+        df = df[df.apply(in_range, axis=1)]
+
+    # Aggregate by office
+    offices = {}
     for _, row in df.iterrows():
-        result.append(dict(
-            name=str(row["name"]),
-            ul=int(_sv(row.get("ul",0))),       nl=int(_sv(row.get("nl",0))),
-            apt=int(_sv(row.get("apt",0))),     quote=int(_sv(row.get("quote",0))),
-            cust=int(_sv(row.get("cust",0))),   sales=_sv(row.get("sales",0)),
-            nlc=int(_sv(row.get("nlc",0))),     nl_sales=_sv(row.get("nl_sales",0)),
-            leads_pct=str(row.get("leads_pct","0%")),
-            sales_pct=str(row.get("sales_pct","0%")),
-            apt_leads=str(row.get("apt_leads","0%")),
-            order_apt=str(row.get("order_apt","0%")),
-            order_leads=str(row.get("order_leads","0%")),
-        ))
-    return result
+        name = str(row["name"]).strip()
+        if not name or name == "nan": continue
+        if name not in offices:
+            offices[name] = {f:0.0 for f in ["ul","nl","apt","quote","cust","sales","nlc","nl_sales"]}
+            offices[name].update({"leads_pct":"","sales_pct":"","apt_leads":"","order_apt":"","order_leads":""})
+        for f in ["ul","nl","apt","quote","cust","sales","nlc","nl_sales"]:
+            offices[name][f] += _sv(row.get(f,0))
+        for f in ["leads_pct","sales_pct","apt_leads","order_apt","order_leads"]:
+            v = str(row.get(f,"")).strip()
+            if v and v != "nan": offices[name][f] = v
+
+    return [dict(
+        name=name,
+        ul=int(d["ul"]), nl=int(d["nl"]), apt=int(d["apt"]),
+        quote=int(d["quote"]), cust=int(d["cust"]),
+        sales=d["sales"], nlc=int(d["nlc"]), nl_sales=d["nl_sales"],
+        leads_pct=d["leads_pct"] or "0%",
+        sales_pct=d["sales_pct"] or "0%",
+        apt_leads=d["apt_leads"] or "0%",
+        order_apt=d["order_apt"] or "0%",
+        order_leads=d["order_leads"] or "0%",
+    ) for name, d in offices.items()]
 
 
 # ── Tab 3: Campaign Performance ───────────────────────────────────────────────
