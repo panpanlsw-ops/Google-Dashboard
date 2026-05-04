@@ -618,7 +618,7 @@ with tab2:
               "#639922","#888780","#E24B4A","#7F77DD","#5DCAA5","#F0997B",
               "#97C459","#EF9F27","#ED93B1","#B4B2A9"]
 
-    detail_data = get_regional_detail()
+    detail_data = get_regional_detail(t2_fy, MONTH_NUM[t2_fm], t2_ty, MONTH_NUM[t2_tm])
     rows_html = ""
     pie_names = []
     pie_leads = []

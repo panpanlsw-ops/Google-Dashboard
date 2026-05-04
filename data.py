@@ -208,36 +208,55 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
 
 # ── Tab 2: Regional Offices ───────────────────────────────────────────────────
 
-def get_regional_detail() -> dict:
-    """Reads campaign breakdown per regional office from Tab2_Regional_Detail."""
+def get_regional_detail(from_year=None, from_month=None, to_year=None, to_month=None) -> dict:
+    """Reads campaign breakdown per regional office from Tab2_Regional_Detail, filtered by date range."""
     try:
         df = pd.read_excel(_excel_path(), sheet_name="Tab2_Regional_Detail", header=3)
-        df = df.rename(columns={
-            df.columns[0]:"region", df.columns[1]:"campaign",
-            df.columns[2]:"ul",     df.columns[3]:"nl",
-            df.columns[4]:"apt",    df.columns[5]:"quote",
-            df.columns[6]:"cust",   df.columns[7]:"sales",
-            df.columns[8]:"nlc",    df.columns[9]:"nl_sales",
-        })
-        df = df.dropna(subset=["region","campaign"])
-        df["region"]   = df["region"].astype(str).str.replace("–","-").str.replace("—","-").str.strip()
-        df["campaign"] = df["campaign"].astype(str).str.replace("–","-").str.replace("—","-").str.strip()
+        df.columns = [str(c).strip() for c in df.columns]
 
+        # Rename columns by position
+        col_names = ["region","year","month","campaign","ul","nl","apt","quote","cust","sales","nlc","nl_sales"]
+        df = df.iloc[:, :len(col_names)]
+        df.columns = col_names
+
+        df = df.dropna(subset=["region","campaign"])
+        df["region"]   = df["region"].astype(str).str.replace("–","-").str.strip()
+        df["campaign"] = df["campaign"].astype(str).str.replace("–","-").str.strip()
+
+        MONTH_MAP = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
+                     "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12}
+
+        # Filter by date range
+        if from_year and to_year:
+            def in_range(row):
+                try:
+                    yr = int(float(row["year"]))
+                    mo = MONTH_MAP.get(str(row["month"]).strip(), 0)
+                    return (from_year*100+from_month) <= (yr*100+mo) <= (to_year*100+to_month)
+                except: return False
+            df = df[df.apply(in_range, axis=1)]
+
+        # Aggregate by region+campaign (sum numeric)
         result = {}
+        agg = {}
         for _, row in df.iterrows():
-            reg = row["region"]
+            reg  = row["region"]
+            camp = row["campaign"]
+            key  = (reg, camp)
+            if key not in agg:
+                agg[key] = {f:0.0 for f in ["ul","nl","apt","quote","cust","sales","nlc","nl_sales"]}
+            for f in ["ul","nl","apt","quote","cust","sales","nlc","nl_sales"]:
+                agg[key][f] += _sv(row.get(f, 0))
+
+        for (reg, camp), d in agg.items():
             if reg not in result:
                 result[reg] = []
             result[reg].append(dict(
-                campaign = row["campaign"],
-                ul   = int(_sv(row.get("ul",0))),
-                nl   = int(_sv(row.get("nl",0))),
-                apt  = int(_sv(row.get("apt",0))),
-                quote= int(_sv(row.get("quote",0))),
-                cust = int(_sv(row.get("cust",0))),
-                sales= _sv(row.get("sales",0)),
-                nlc  = int(_sv(row.get("nlc",0))),
-                nl_sales= _sv(row.get("nl_sales",0)),
+                campaign=camp,
+                ul=int(d["ul"]), nl=int(d["nl"]),
+                apt=int(d["apt"]), quote=int(d["quote"]),
+                cust=int(d["cust"]), sales=d["sales"],
+                nlc=int(d["nlc"]), nl_sales=d["nl_sales"],
             ))
         return result
     except Exception as e:
