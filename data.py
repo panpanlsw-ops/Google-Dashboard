@@ -51,9 +51,9 @@ def _gspread_client():
     )
     return gspread.authorize(creds)
 
+@st.cache_data(ttl=300)
 def _read_sheet(tab_name: str, header_row: int = 0) -> pd.DataFrame:
-    """Fetch worksheet via gspread and return a DataFrame.
-    header_row is 0-based row index for the column headers."""
+    """Fetch worksheet via gspread — cached for 5 min to avoid API quota errors."""
     gc = _gspread_client()
     ws = gc.open_by_key(SHEET_ID).worksheet(tab_name)
     rows = ws.get_all_values()
@@ -290,8 +290,7 @@ def get_regional_detail(from_year=None, from_month=None, to_year=None, to_month=
 
 @st.cache_data(ttl=300)
 def get_regional_data(from_year=None, from_month=None, to_year=None, to_month=None) -> list:
-    df = _read_sheet("Tab2_Regional", header_row=0)
-    # Positional assignment — matches Google Sheet column order exactly
+    df = _read_sheet("Tab2_Regional", header_row=0).copy()
     pos_cols = ["name","year","month","ul","nl","apt","quote","cust","sales",
                 "nlc","nl_sales","leads_pct","sales_pct","apt_leads","order_apt","order_leads"]
     df = df.iloc[:, :len(pos_cols)]
@@ -345,9 +344,7 @@ def get_regional_data(from_year=None, from_month=None, to_year=None, to_month=No
 
 # ── Tab 3: Campaign Performance ───────────────────────────────────────────────
 def get_campaign_data() -> list:
-    df = _read_sheet("Tab3_Campaign", header_row=0)
-    # Positional assignment — Google Sheet cols: Campaign, year, month, Clicks, Cost,
-    # Conversions, unique_leads, apt, customers, sales_amount, ROI
+    df = _read_sheet("Tab3_Campaign", header_row=0).copy()
     pos_cols3 = ["campaign","year","month","clicks","cost","conv",
                  "leads","apt","cust","sales","roi"]
     df = df.iloc[:, :len(pos_cols3)]
