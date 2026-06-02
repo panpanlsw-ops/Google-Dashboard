@@ -18,7 +18,7 @@ def get_campaigns():
     """Load only active campaigns (non-zero TY Cost or TY Leads) from Tab1_KPI sheet."""
     try:
         import pandas as pd
-        df = _read_sheet("Tab1_KPI", header_row=4)
+        df = _read_sheet("Tab1_KPI", header_row=0)
         campaigns = {}
         for _, row in df.iterrows():
             name = _norm(str(row.iloc[0]))
@@ -53,15 +53,15 @@ def _gspread_client():
 
 def _read_sheet(tab_name: str, header_row: int = 0) -> pd.DataFrame:
     """Fetch worksheet via gspread and return a DataFrame.
-    header_row is 0-based — row at that index becomes column headers."""
+    header_row is 0-based row index for the column headers."""
     gc = _gspread_client()
     ws = gc.open_by_key(SHEET_ID).worksheet(tab_name)
     rows = ws.get_all_values()
     if not rows or len(rows) <= header_row:
         return pd.DataFrame()
-    headers = rows[header_row]
-    data    = rows[header_row + 1:]
-    # Pad short rows so every row has the same number of columns
+    headers = [str(h).strip() if str(h).strip() else f"col_{i}"
+               for i, h in enumerate(rows[header_row])]
+    data = rows[header_row + 1:]
     n = len(headers)
     data = [r + [""] * (n - len(r)) for r in data]
     df = pd.DataFrame(data, columns=headers)
@@ -93,7 +93,7 @@ def get_data(campaign: str) -> dict:
     One row per campaign. Columns:
     A=Campaign, B-K=TY, L-S=LY MTD, T-X=LY Full, Y-Z=Budget, AA=Date
     """
-    df = _read_sheet("Tab1_KPI", header_row=4)
+    df = _read_sheet("Tab1_KPI", header_row=0)
     df.columns = [
         "campaign",
         "ty_conv","ty_conv_invoca","ty_conv_form",
@@ -159,7 +159,7 @@ def get_data(campaign: str) -> dict:
 @st.cache_data(ttl=300)
 def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
     """Reads MTD comparison from Tab1_KPI, monthly trend from Tab3_Campaign."""
-    df = _read_sheet("Tab1_KPI", header_row=4)
+    df = _read_sheet("Tab1_KPI", header_row=0)
     df.columns = [
         "campaign",
         "ty_conv","ty_conv_invoca","ty_conv_form",
@@ -236,10 +236,7 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
 def get_regional_detail(from_year=None, from_month=None, to_year=None, to_month=None) -> dict:
     """Reads campaign breakdown per regional office from Tab2_Regional_Detail, filtered by date range."""
     try:
-        df = _read_sheet("Tab2_Regional_Detail", header_row=3)
-        df.columns = [str(c).strip() for c in df.columns]
-
-        # Rename columns by position
+        df = _read_sheet("Tab2_Regional_Detail", header_row=0)
         col_names = ["region","year","month","campaign","ul","nl","apt","quote","cust","sales","nlc","nl_sales"]
         df = df.iloc[:, :len(col_names)]
         df.columns = col_names
@@ -293,15 +290,12 @@ def get_regional_detail(from_year=None, from_month=None, to_year=None, to_month=
 
 @st.cache_data(ttl=300)
 def get_regional_data(from_year=None, from_month=None, to_year=None, to_month=None) -> list:
-    df = _read_sheet("Tab2_Regional", header_row=3)
-    col_map = {
-        "Regional Office":"name","Year":"year","Month":"month",
-        "Unique Leads":"ul","New Leads":"nl","Apt":"apt","Quote":"quote",
-        "Customers":"cust","Sales Amount":"sales","NL Customers":"nlc","NL Sales":"nl_sales",
-        "% of Total":"leads_pct","$ Sales % of Total":"sales_pct",
-        "Apt/Leads":"apt_leads","Order/Apt":"order_apt","Order/Leads":"order_leads",
-    }
-    df = df.rename(columns={c: col_map[c] for c in df.columns if c in col_map})
+    df = _read_sheet("Tab2_Regional", header_row=0)
+    # Positional assignment — matches Google Sheet column order exactly
+    pos_cols = ["name","year","month","ul","nl","apt","quote","cust","sales",
+                "nlc","nl_sales","leads_pct","sales_pct","apt_leads","order_apt","order_leads"]
+    df = df.iloc[:, :len(pos_cols)]
+    df.columns = pos_cols[:len(df.columns)]
     df = df.dropna(subset=["name"])
     df = df[~df["name"].astype(str).str.contains("row|update|office|regional|add new", case=False, na=False)]
 
@@ -351,14 +345,13 @@ def get_regional_data(from_year=None, from_month=None, to_year=None, to_month=No
 
 # ── Tab 3: Campaign Performance ───────────────────────────────────────────────
 def get_campaign_data() -> list:
-    df = _read_sheet("Tab3_Campaign", header_row=3)
-    col_map3 = {
-        "Campaign":"campaign","Year":"year","Month":"month",
-        "Clicks":"clicks","Cost":"cost","Conversions":"conv",
-        "Leads":"leads","Appointments":"apt","Customers":"cust",
-        "Sales":"sales","ROI %":"roi",
-    }
-    df = df.rename(columns={c: col_map3[c] for c in df.columns if c in col_map3})
+    df = _read_sheet("Tab3_Campaign", header_row=0)
+    # Positional assignment — Google Sheet cols: Campaign, year, month, Clicks, Cost,
+    # Conversions, unique_leads, apt, customers, sales_amount, ROI
+    pos_cols3 = ["campaign","year","month","clicks","cost","conv",
+                 "leads","apt","cust","sales","roi"]
+    df = df.iloc[:, :len(pos_cols3)]
+    df.columns = pos_cols3[:len(df.columns)]
     df = df.dropna(subset=["campaign"])
     df["campaign"] = df["campaign"].astype(str).apply(_norm)
     df = df[~df["campaign"].str.contains("campaign|row|update", case=False, na=False)]
