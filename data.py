@@ -18,7 +18,7 @@ def get_campaigns():
     """Load only active campaigns (non-zero TY Cost or TY Leads) from Tab1_KPI sheet."""
     try:
         import pandas as pd
-        df = pd.read_excel(_excel_path(), sheet_name="Tab1_KPI", header=4)
+        df = _read_sheet("Tab1_KPI", header_row=4)
         campaigns = {}
         for _, row in df.iterrows():
             name = _norm(str(row.iloc[0]))
@@ -39,9 +39,30 @@ def get_campaigns():
 
 CAMPAIGNS = CAMPAIGNS_BASE  # will be overridden at runtime
 
-def _excel_path():
-    base = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base, "dashboard_data.xlsx")
+SHEET_ID = "YOUR_GOOGLE_SHEET_ID_HERE"  # ← paste your Sheet ID from the URL
+
+@st.cache_resource
+def _gspread_client():
+    """Authenticated gspread client, cached for the app lifetime."""
+    import gspread
+    from google.oauth2.service_account import Credentials
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    )
+    return gspread.authorize(creds)
+
+def _read_sheet(tab_name: str, header_row: int = 0) -> pd.DataFrame:
+    """Fetch a worksheet and return a DataFrame.
+    header_row is 0-based, same as header= in read_excel."""
+    gc = _gspread_client()
+    ws = gc.open_by_key(SHEET_ID).worksheet(tab_name)
+    rows = ws.get_all_values()
+    if not rows or len(rows) <= header_row:
+        return pd.DataFrame()
+    df = pd.DataFrame(rows[header_row + 1:], columns=rows[header_row])
+    df = df.replace("", pd.NA)
+    return df
 
 def _sv(val):
     try:
@@ -68,7 +89,7 @@ def get_data(campaign: str) -> dict:
     One row per campaign. Columns:
     A=Campaign, B-K=TY, L-S=LY MTD, T-X=LY Full, Y-Z=Budget, AA=Date
     """
-    df = pd.read_excel(_excel_path(), sheet_name="Tab1_KPI", header=4)
+    df = _read_sheet("Tab1_KPI", header_row=4)
     df.columns = [
         "campaign",
         "ty_conv","ty_conv_invoca","ty_conv_form",
@@ -101,8 +122,8 @@ def get_data(campaign: str) -> dict:
         conversions  = int(sv("ty_conv")),
         cost         = sv("ty_cost"),
         budget       = sv("bud_cost"),
-        invoca       = int(sv("ty_conv_invoca")),  # Google conv Invoca
-        form         = int(sv("ty_conv_form")),     # Google conv Form
+        invoca       = int(sv("ty_conv_invoca")),  # Bing conv Invoca
+        form         = int(sv("ty_conv_form")),     # Bing conv Form
         leads        = int(sv("ty_leads")),
         crm_invoca   = int(sv("ty_crm_invoca")),
         crm_form     = int(sv("ty_crm_form")),
@@ -134,7 +155,7 @@ def get_data(campaign: str) -> dict:
 @st.cache_data(ttl=300)
 def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
     """Reads MTD comparison from Tab1_KPI, monthly trend from Tab3_Campaign."""
-    df = pd.read_excel(_excel_path(), sheet_name="Tab1_KPI", header=4)
+    df = _read_sheet("Tab1_KPI", header_row=4)
     df.columns = [
         "campaign",
         "ty_conv","ty_conv_invoca","ty_conv_form",
@@ -211,7 +232,7 @@ def get_roi_data(campaign: str, start_date: date, end_date: date) -> dict:
 def get_regional_detail(from_year=None, from_month=None, to_year=None, to_month=None) -> dict:
     """Reads campaign breakdown per regional office from Tab2_Regional_Detail, filtered by date range."""
     try:
-        df = pd.read_excel(_excel_path(), sheet_name="Tab2_Regional_Detail", header=3)
+        df = _read_sheet("Tab2_Regional_Detail", header_row=3)
         df.columns = [str(c).strip() for c in df.columns]
 
         # Rename columns by position
@@ -268,7 +289,7 @@ def get_regional_detail(from_year=None, from_month=None, to_year=None, to_month=
 
 @st.cache_data(ttl=300)
 def get_regional_data(from_year=None, from_month=None, to_year=None, to_month=None) -> list:
-    df = pd.read_excel(_excel_path(), sheet_name="Tab2_Regional", header=3)
+    df = _read_sheet("Tab2_Regional", header_row=3)
     col_map = {
         "Regional Office":"name","Year":"year","Month":"month",
         "Unique Leads":"ul","New Leads":"nl","Apt":"apt","Quote":"quote",
@@ -285,6 +306,8 @@ def get_regional_data(from_year=None, from_month=None, to_year=None, to_month=No
                  "January":1,"February":2,"March":3,"April":4,
                  "June":6,"July":7,"August":8,"September":9,
                  "October":10,"November":11,"December":12}
+
+    # Only filter by date range if Year and Month columns exist
     has_date_cols = "year" in df.columns and "month" in df.columns
     if from_year and to_year and has_date_cols:
         def in_range(row):
@@ -324,7 +347,7 @@ def get_regional_data(from_year=None, from_month=None, to_year=None, to_month=No
 
 # ── Tab 3: Campaign Performance ───────────────────────────────────────────────
 def get_campaign_data() -> list:
-    df = pd.read_excel(_excel_path(), sheet_name="Tab3_Campaign", header=3)
+    df = _read_sheet("Tab3_Campaign", header_row=3)
     col_map3 = {
         "Campaign":"campaign","Year":"year","Month":"month",
         "Clicks":"clicks","Cost":"cost","Conversions":"conv",
@@ -337,7 +360,10 @@ def get_campaign_data() -> list:
     df = df[~df["campaign"].str.contains("campaign|row|update", case=False, na=False)]
 
     MONTH_MAP = {"Jan":0,"Feb":1,"Mar":2,"Apr":3,"May":4,"Jun":5,
-                 "Jul":6,"Aug":7,"Sep":8,"Oct":9,"Nov":10,"Dec":11}
+                 "Jul":6,"Aug":7,"Sep":8,"Oct":9,"Nov":10,"Dec":11,
+                 "January":0,"February":1,"March":2,"April":3,
+                 "June":5,"July":6,"August":7,"September":8,
+                 "October":9,"November":10,"December":11}
 
     campaigns = df["campaign"].unique().tolist()
     result = []
