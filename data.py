@@ -13,31 +13,6 @@ CAMPAIGNS_BASE = {
     "all": "All campaigns",
 }
 
-@st.cache_data(ttl=300)
-def get_campaigns():
-    """Load only active campaigns (non-zero TY Cost or TY Leads) from Tab1_KPI sheet."""
-    try:
-        import pandas as pd
-        df = _read_sheet("Tab1_KPI", header_row=0)
-        campaigns = {}
-        for _, row in df.iterrows():
-            name = _norm(str(row.iloc[0]))
-            if not name or name in ["nan", "Yellow=TY"]:
-                continue
-            # Check if campaign has any data — TY Cost (col 2) or TY Leads (col 5)
-            try:
-                ty_cost  = float(row.iloc[2]) if row.iloc[2] else 0
-                ty_leads = float(row.iloc[5]) if row.iloc[5] else 0
-            except:
-                ty_cost, ty_leads = 0, 0
-            # Always include "All campaigns", skip others with no data
-            if name == "All campaigns" or ty_cost > 0 or ty_leads > 0:
-                campaigns[name] = name
-        return campaigns if campaigns else CAMPAIGNS_BASE
-    except:
-        return CAMPAIGNS_BASE
-
-CAMPAIGNS = CAMPAIGNS_BASE  # will be overridden at runtime
 
 SHEET_ID = "1XXbTwhhbeh-VFV1Kik_YnvjcbmFd8M7V8Pdb57n14VU"
 
@@ -67,6 +42,45 @@ def _read_sheet(tab_name: str, header_row: int = 0) -> pd.DataFrame:
     df = pd.DataFrame(data, columns=headers)
     df = df.replace("", pd.NA)
     return df
+
+
+@st.cache_data(ttl=300)
+def get_campaigns():
+    """Load only active campaigns (non-zero TY Cost or TY Leads) from Tab1_KPI sheet."""
+    try:
+        import pandas as pd
+        df = _read_sheet("Tab1_KPI", header_row=0)
+        # Assign column names by position matching Google Sheet Tab1_KPI layout
+        col_names = [
+            "campaign",
+            "ty_conv","ty_conv_invoca","ty_conv_form",
+            "ty_cost",
+            "ty_leads","ty_crm_invoca","ty_crm_form",
+            "ty_apt","ty_cust","ty_cpl","ty_cpa","ty_roi",
+            "ly_conv","ly_cost","ly_leads","ly_apt","ly_cust","ly_cpl","ly_cpa","ly_roi",
+            "lyf_conv","lyf_cost","lyf_leads","lyf_apt","lyf_cust",
+            "bud_cost","lm_leads","lm_apt","date",
+        ]
+        df = df.iloc[:, :len(col_names)]
+        df.columns = col_names[:len(df.columns)]
+        campaigns = {}
+        for _, row in df.iterrows():
+            name = _norm(str(row.get("campaign", "")))
+            if not name or name in ["nan", "Yellow=TY", "Campaign"]:
+                continue
+            try:
+                ty_cost  = float(row.get("ty_cost",  0) or 0)
+                ty_leads = float(row.get("ty_leads", 0) or 0)
+            except:
+                ty_cost, ty_leads = 0, 0
+            if name == "All campaigns" or ty_cost > 0 or ty_leads > 0:
+                campaigns[name] = name
+        return campaigns if campaigns else CAMPAIGNS_BASE
+    except Exception as e:
+        st.error(f"get_campaigns error: {e}")
+        return CAMPAIGNS_BASE
+
+CAMPAIGNS = CAMPAIGNS_BASE  # will be overridden at runtime
 
 def _sv(val):
     try:
