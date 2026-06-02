@@ -224,7 +224,10 @@ def get_regional_detail(from_year=None, from_month=None, to_year=None, to_month=
         df["campaign"] = df["campaign"].astype(str).str.replace("–","-").str.strip()
 
         MONTH_MAP = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
-                     "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12}
+                     "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12,
+                     "January":1,"February":2,"March":3,"April":4,
+                     "June":6,"July":7,"August":8,"September":9,
+                     "October":10,"November":11,"December":12}
 
         # Filter by date range
         if from_year and to_year:
@@ -278,9 +281,10 @@ def get_regional_data(from_year=None, from_month=None, to_year=None, to_month=No
     df = df[~df["name"].astype(str).str.contains("row|update|office|regional|add new", case=False, na=False)]
 
     MONTH_MAP = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
-                 "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12}
-
-    # Only filter by date range if Year and Month columns exist
+                 "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12,
+                 "January":1,"February":2,"March":3,"April":4,
+                 "June":6,"July":7,"August":8,"September":9,
+                 "October":10,"November":11,"December":12}
     has_date_cols = "year" in df.columns and "month" in df.columns
     if from_year and to_year and has_date_cols:
         def in_range(row):
