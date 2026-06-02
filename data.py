@@ -39,7 +39,7 @@ def get_campaigns():
 
 CAMPAIGNS = CAMPAIGNS_BASE  # will be overridden at runtime
 
-SHEET_ID = "YOUR_GOOGLE_SHEET_ID_HERE"  # ← paste your Sheet ID from the URL
+SHEET_ID = "1XXbTwhhbeh-VFV1Kik_YnvjcbmFd8M7V8Pdb57n14VU"  # ← paste your Sheet ID from the URL
 
 @st.cache_resource
 def _gspread_client():
