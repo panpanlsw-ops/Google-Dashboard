@@ -39,11 +39,10 @@ def get_campaigns():
 
 CAMPAIGNS = CAMPAIGNS_BASE  # will be overridden at runtime
 
-SHEET_ID = "1XXbTwhhbeh-VFV1Kik_YnvjcbmFd8M7V8Pdb57n14VU"  # ← paste your Sheet ID from the URL
+SHEET_ID = "1XXbTwhhbeh-VFV1Kik_YnvjcbmFd8M7V8Pdb57n14VU"
 
 @st.cache_resource
 def _gspread_client():
-    """Authenticated gspread client, cached for the app lifetime."""
     import gspread
     from google.oauth2.service_account import Credentials
     creds = Credentials.from_service_account_info(
@@ -53,14 +52,19 @@ def _gspread_client():
     return gspread.authorize(creds)
 
 def _read_sheet(tab_name: str, header_row: int = 0) -> pd.DataFrame:
-    """Fetch a worksheet and return a DataFrame.
-    header_row is 0-based, same as header= in read_excel."""
+    """Fetch worksheet via gspread and return a DataFrame.
+    header_row is 0-based — row at that index becomes column headers."""
     gc = _gspread_client()
     ws = gc.open_by_key(SHEET_ID).worksheet(tab_name)
     rows = ws.get_all_values()
     if not rows or len(rows) <= header_row:
         return pd.DataFrame()
-    df = pd.DataFrame(rows[header_row + 1:], columns=rows[header_row])
+    headers = rows[header_row]
+    data    = rows[header_row + 1:]
+    # Pad short rows so every row has the same number of columns
+    n = len(headers)
+    data = [r + [""] * (n - len(r)) for r in data]
+    df = pd.DataFrame(data, columns=headers)
     df = df.replace("", pd.NA)
     return df
 
