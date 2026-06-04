@@ -644,7 +644,7 @@ with tab2:
             try:
                 s = str(val).replace("%","").strip()
                 f = float(s)
-                if f < 10:  # decimal form like 0.25 or 2.5
+                if f < 1:  # decimal form like 0.277 → 27.7%
                     return f"{f*100:.2f}%"
                 return f"{f:.2f}%"
             except:
