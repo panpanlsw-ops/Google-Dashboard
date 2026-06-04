@@ -28,7 +28,7 @@ def _gspread_client():
 
 @st.cache_data(ttl=300)
 def _read_sheet(tab_name: str, header_row: int = 0) -> pd.DataFrame:
-    """Fetch worksheet via gspread — cached for 5 min to avoid API quota errors."""
+    """Fetch worksheet via gspread — cached 5 min to avoid quota errors."""
     gc = _gspread_client()
     ws = gc.open_by_key(SHEET_ID).worksheet(tab_name)
     rows = ws.get_all_values()
@@ -48,19 +48,13 @@ def _read_sheet(tab_name: str, header_row: int = 0) -> pd.DataFrame:
 def get_campaigns():
     """Load only active campaigns (non-zero TY Cost or TY Leads) from Tab1_KPI sheet."""
     try:
-        import pandas as pd
         df = _read_sheet("Tab1_KPI", header_row=0)
-        # Assign column names by position matching Google Sheet Tab1_KPI layout
-        col_names = [
-            "campaign",
-            "ty_conv","ty_conv_invoca","ty_conv_form",
-            "ty_cost",
-            "ty_leads","ty_crm_invoca","ty_crm_form",
-            "ty_apt","ty_cust","ty_cpl","ty_cpa","ty_roi",
-            "ly_conv","ly_cost","ly_leads","ly_apt","ly_cust","ly_cpl","ly_cpa","ly_roi",
-            "lyf_conv","lyf_cost","lyf_leads","lyf_apt","lyf_cust",
-            "bud_cost","lm_leads","lm_apt","date",
-        ]
+        col_names = ["campaign","ty_conv","ty_conv_invoca","ty_conv_form","ty_cost",
+                     "ty_leads","ty_crm_invoca","ty_crm_form","ty_apt","ty_cust",
+                     "ty_cpl","ty_cpa","ty_roi","ly_conv","ly_cost","ly_leads",
+                     "ly_apt","ly_cust","ly_cpl","ly_cpa","ly_roi","lyf_conv",
+                     "lyf_cost","lyf_leads","lyf_apt","lyf_cust","bud_cost",
+                     "lm_leads","lm_apt","date"]
         df = df.iloc[:, :len(col_names)]
         df.columns = col_names[:len(df.columns)]
         campaigns = {}
@@ -251,9 +245,16 @@ def get_regional_detail(from_year=None, from_month=None, to_year=None, to_month=
     """Reads campaign breakdown per regional office from Tab2_Regional_Detail, filtered by date range."""
     try:
         df = _read_sheet("Tab2_Regional_Detail", header_row=0)
-        col_names = ["region","year","month","campaign","ul","nl","apt","quote","cust","sales","nlc","nl_sales"]
-        df = df.iloc[:, :len(col_names)]
-        df.columns = col_names
+        detail_map = {
+            "Regional Office":"region","Year":"year","Month":"month","Campaign":"campaign",
+            "Unique Leads":"ul","New Leads":"nl","Appointments":"apt","Apt":"apt",
+            "Quote":"quote","Customers":"cust","Sales Amount":"sales",
+            "NL Customers":"nlc","NL Sales":"nl_sales",
+        }
+        df = df.rename(columns={c: detail_map[c] for c in df.columns if c in detail_map})
+        for col in ["region","year","month","campaign","ul","nl","apt","quote","cust","sales","nlc","nl_sales"]:
+            if col not in df.columns:
+                df[col] = pd.NA
 
         df = df.dropna(subset=["region","campaign"])
         df["region"]   = df["region"].astype(str).str.replace("–","-").str.strip()
@@ -305,10 +306,21 @@ def get_regional_detail(from_year=None, from_month=None, to_year=None, to_month=
 @st.cache_data(ttl=300)
 def get_regional_data(from_year=None, from_month=None, to_year=None, to_month=None) -> list:
     df = _read_sheet("Tab2_Regional", header_row=0).copy()
-    pos_cols = ["name","year","month","ul","nl","apt","quote","cust","sales",
-                "nlc","nl_sales","leads_pct","sales_pct","apt_leads","order_apt","order_leads"]
-    df = df.iloc[:, :len(pos_cols)]
-    df.columns = pos_cols[:len(df.columns)]
+    # Map actual Google Sheet header names to internal names
+    header_map = {
+        "Regional Office":"name","Year":"year","Month":"month",
+        "Unique Leads":"ul","New Leads":"nl",
+        "Appointments":"apt","Apt":"apt","Quote":"quote",
+        "Customers":"cust","Sales Amount":"sales",
+        "NL Customers":"nlc","NL Sales":"nl_sales",
+        "% of Total":"leads_pct","$ Sales % of Total":"sales_pct",
+        "Apt/Leads":"apt_leads","Order/Apt":"order_apt","Order/Leads":"order_leads",
+    }
+    df = df.rename(columns={c: header_map[c] for c in df.columns if c in header_map})
+    for col in ["name","year","month","ul","nl","apt","quote","cust","sales",
+                "nlc","nl_sales","leads_pct","sales_pct","apt_leads","order_apt","order_leads"]:
+        if col not in df.columns:
+            df[col] = pd.NA
     df = df.dropna(subset=["name"])
     df = df[~df["name"].astype(str).str.contains("row|update|office|regional|add new", case=False, na=False)]
 
@@ -359,10 +371,20 @@ def get_regional_data(from_year=None, from_month=None, to_year=None, to_month=No
 # ── Tab 3: Campaign Performance ───────────────────────────────────────────────
 def get_campaign_data() -> list:
     df = _read_sheet("Tab3_Campaign", header_row=0).copy()
-    pos_cols3 = ["campaign","year","month","clicks","cost","conv",
-                 "leads","apt","cust","sales","roi"]
-    df = df.iloc[:, :len(pos_cols3)]
-    df.columns = pos_cols3[:len(df.columns)]
+    # Map actual Google Sheet header names
+    camp_map = {
+        "Campaign":"campaign","Year":"year","Month":"month",
+        "Clicks":"clicks","Cost":"cost","Conversions":"conv",
+        "Leads":"leads","unique_leads":"leads",
+        "Appointments":"apt","apt":"apt",
+        "Customers":"cust","customers":"cust",
+        "Sales":"sales","sales_amount":"sales",
+        "ROI %":"roi","ROI":"roi",
+    }
+    df = df.rename(columns={c: camp_map[c] for c in df.columns if c in camp_map})
+    for col in ["campaign","year","month","clicks","cost","conv","leads","apt","cust","sales","roi"]:
+        if col not in df.columns:
+            df[col] = pd.NA
     df = df.dropna(subset=["campaign"])
     df["campaign"] = df["campaign"].astype(str).apply(_norm)
     df = df[~df["campaign"].str.contains("campaign|row|update", case=False, na=False)]
