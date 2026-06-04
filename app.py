@@ -651,9 +651,9 @@ with tab2:
                 return "0.00%"
         lp_str = fix_pct_val(o.get("leads_pct","0"))
         sp_str = fix_pct_val(o.get("sales_pct","0"))
-        al_str = str(o.get("apt_leads","0%"))
-        oa_str = str(o.get("order_apt","0%"))
-        ol_str = str(o.get("order_leads","0%"))
+        al_str = fix_pct_val(o.get("apt_leads","0"))
+        oa_str = fix_pct_val(o.get("order_apt","0"))
+        ol_str = fix_pct_val(o.get("order_leads","0"))
         office_key = o["name"].replace(" ","_").replace("/","_")
 
         # For pie chart use numeric value
