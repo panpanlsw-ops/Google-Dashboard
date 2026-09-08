@@ -1142,19 +1142,25 @@ with tab4:
 
         g_camps = g_detail.get(reg, [])
         b_camps = b_detail.get(reg, [])
+        # Combine and tag each camp with source, sort by leads then sales
+        all_camps_tagged = (
+            [{"src":"g","data":c} for c in g_camps] +
+            [{"src":"b","data":c} for c in b_camps]
+        )
+        all_camps_tagged.sort(key=lambda x: (-sv4(x["data"].get("ul",0)), -float(x["data"].get("sales",0) or 0)))
         det_rows = ""
-        for camp in sorted(g_camps, key=lambda x: -sv4(x.get("ul",0))):
-            ul=sv4(camp.get("ul",0)); apt=sv4(camp.get("apt",0))
-            cust=sv4(camp.get("cust",0)); sales=float(camp.get("sales",0) or 0)
-            det_rows += (f'<tr><td style="{dgl}">{camp["campaign"]}{g_badge}</td>' +
-                         f'<td style="{dg}">{ul:,}</td><td style="{dg}">{apt:,}</td>' +
-                         f'<td style="{dg}">{cust:,}</td><td style="{dg}">{fmts4(sales)}</td></tr>')
-        for camp in sorted(b_camps, key=lambda x: -sv4(x.get("ul",0))):
-            ul=sv4(camp.get("ul",0)); apt=sv4(camp.get("apt",0))
-            cust=sv4(camp.get("cust",0)); sales=float(camp.get("sales",0) or 0)
-            det_rows += (f'<tr><td style="{dbl}">{camp["campaign"]}{b_badge}</td>' +
-                         f'<td style="{db}">{ul:,}</td><td style="{db}">{apt:,}</td>' +
-                         f'<td style="{db}">{cust:,}</td><td style="{db}">{fmts4(sales)}</td></tr>')
+        for item in all_camps_tagged:
+            c = item["data"]; src = item["src"]
+            ul=sv4(c.get("ul",0)); apt=sv4(c.get("apt",0))
+            cust=sv4(c.get("cust",0)); sales=float(c.get("sales",0) or 0)
+            if src == "g":
+                det_rows += (f'<tr><td style="{dgl}">{c["campaign"]}{g_badge}</td>' +
+                             f'<td style="{dg}">{ul:,}</td><td style="{dg}">{apt:,}</td>' +
+                             f'<td style="{dg}">{cust:,}</td><td style="{dg}">{fmts4(sales)}</td></tr>')
+            else:
+                det_rows += (f'<tr><td style="{dbl}">{c["campaign"]}{b_badge}</td>' +
+                             f'<td style="{db}">{ul:,}</td><td style="{db}">{apt:,}</td>' +
+                             f'<td style="{db}">{cust:,}</td><td style="{db}">{fmts4(sales)}</td></tr>')
 
         has_det = bool(det_rows)
         expand = (f'<span id="e_{key}" onclick="t4tog(\'{key}\')" ' +
