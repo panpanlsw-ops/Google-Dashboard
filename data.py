@@ -67,6 +67,8 @@ def _read_bing_sheet(tab_name: str, header_row: int = 0) -> pd.DataFrame:
 def get_bing_regional_data(from_year=None, from_month=None, to_year=None, to_month=None) -> list:
     """Reads Tab2_Regional from Bing dashboard sheet."""
     df = _read_bing_sheet("Tab2_Regional", header_row=0).copy()
+    df.columns = [str(c).strip() for c in df.columns]
+    print(f"Bing Tab2_Regional raw columns: {list(df.columns)}")
     header_map = {
         "Regional Office":"name","Year":"year","Month":"month",
         "Unique Leads":"ul","New Leads":"nl",
@@ -127,6 +129,9 @@ def get_bing_regional_detail(from_year=None, from_month=None, to_year=None, to_m
     """Reads Tab2_Regional_Detail from Bing dashboard sheet."""
     try:
         df = _read_bing_sheet("Tab2_Regional_Detail", header_row=0)
+        # Strip whitespace from column names first
+        df.columns = [str(c).strip() for c in df.columns]
+        print(f"Bing Tab2_Regional_Detail raw columns: {list(df.columns)}")
         detail_map = {
             "Regional Office":"region","Year":"year","Month":"month","Campaign":"campaign",
             "Unique Leads":"ul","New Leads":"nl","Appointments":"apt","Apt":"apt",
@@ -134,17 +139,18 @@ def get_bing_regional_detail(from_year=None, from_month=None, to_year=None, to_m
             "NL Customers":"nlc","NL Sales":"nl_sales",
         }
         df = df.rename(columns={c: detail_map[c] for c in df.columns if c in detail_map})
+        print(f"Bing Tab2_Regional_Detail columns after rename: {list(df.columns)}")
         for col in ["region","year","month","campaign","ul","nl","apt","quote","cust","sales","nlc","nl_sales"]:
             if col not in df.columns:
                 df[col] = pd.NA
 
-        df = df.dropna(subset=["region","campaign"])
         df["region"]   = df["region"].astype(str).str.replace("–","-").str.strip()
         df["campaign"] = df["campaign"].astype(str).str.replace("–","-").str.strip()
         JUNK_CONTAINS = ["row","update","office","regional","add new","appointment set"]
         JUNK_EXACT = ["0","nan",""]
         df = df[df["region"].apply(lambda x: bool(x) and x not in JUNK_EXACT and not any(j in x.lower() for j in JUNK_CONTAINS))]
-        df = df[df["campaign"].apply(lambda x: bool(x) and x != "nan")]
+        df = df[df["campaign"].apply(lambda x: bool(x) and x not in JUNK_EXACT)]
+        df = df.dropna(subset=["region","campaign"])
 
         MONTH_MAP = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
                      "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12,
