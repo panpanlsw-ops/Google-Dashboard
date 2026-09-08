@@ -331,7 +331,7 @@ with tab1:
       <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280;"><span style="width:12px;height:4px;background:#BA7517;border-radius:2px;display:inline-block;"></span>Last Month Full (target)</span>
     </div>
     """
-    st.iframe(gauge_html, height=320, scrolling=False)
+    st.components.v1.html(gauge_html, height=320, scrolling=False)
 
     st.markdown("### 📊 MTD & Comparison with Last Year")
     # ── Alert Lists: campaigns with fewer leads or appointments than LY ─────
@@ -555,7 +555,7 @@ with tab1:
     }});
     </script>
     """
-    st.iframe(chart_html, height=1150, scrolling=False)
+    st.components.v1.html(chart_html, height=1150, scrolling=False)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -802,7 +802,7 @@ with tab2:
     new Chart(document.getElementById('pie-leads'),{{type:'doughnut',data:{{labels:NAMES,datasets:[{{data:LEADS,backgroundColor:COLORS,borderWidth:1,borderColor:'#fff'}}]}},options:pieOpts}});
     new Chart(document.getElementById('pie-sales'),{{type:'doughnut',data:{{labels:NAMES,datasets:[{{data:SALES,backgroundColor:COLORS,borderWidth:1,borderColor:'#fff'}}]}},options:pieOpts}});
     </script>"""
-    st.iframe(tab2_html, height=len(offices_sorted)*40+820, scrolling=False)
+    st.components.v1.html(tab2_html, height=len(offices_sorted)*40+820, scrolling=False)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1039,7 +1039,7 @@ function draw(){
 draw();
 </script>"""
 
-    st.iframe(html_part1 + chart_data + html_part2, height=len(rows)*34+600, scrolling=False)
+    st.components.v1.html(html_part1 + chart_data + html_part2, height=len(rows)*34+600, scrolling=False)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 4 — Territory Comparison (simplified total table + G/B campaign breakdown)
@@ -1229,4 +1229,4 @@ function t4tog(key){{
 """
 
     st.markdown(summary_html, unsafe_allow_html=True)
-    st.iframe(table_html, height=len(all_regions)*40+300, scrolling=False)
+    st.components.v1.html(table_html, height=len(all_regions)*40+300, scrolling=False)
