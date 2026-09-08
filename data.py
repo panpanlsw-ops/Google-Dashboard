@@ -128,7 +128,7 @@ def get_bing_regional_detail(from_year=None, from_month=None, to_year=None, to_m
     """Reads Tab2_Regional_Detail from Bing dashboard sheet."""
     import streamlit as st
     try:
-        df = _read_bing_sheet("Tab2_Regional_Detail", header_row=0)
+        df = _read_bing_sheet("Tab2_Regional", header_row=0)
         df.columns = [str(c).strip() for c in df.columns]
         st.write(f"DEBUG Tab2_Regional_Detail columns: {list(df.columns)[:6]}")
         st.write(f"DEBUG rows: {len(df)}")
