@@ -2,7 +2,7 @@
 import streamlit as st
 from datetime import date, timedelta
 import calendar
-from data import get_data, get_roi_data, get_regional_data, get_campaign_data, get_campaigns, get_regional_detail
+from data import get_data, get_roi_data, get_regional_data, get_campaign_data, get_campaigns, get_regional_detail, get_bing_regional_data, get_bing_regional_detail
 
 st.set_page_config(page_title="Google Daily Report", page_icon="📊", layout="wide")
 
@@ -135,7 +135,7 @@ with col_date:
 
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3 = st.tabs(["📈 Today", "🏢 Regional Offices", "📊 Campaign Performance"])
+tab1, tab2, tab3, tab4 = st.tabs(["📈 Today", "🏢 Regional Offices", "📊 Campaign Performance", "🗺️ Territory Comparison"])
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1040,3 +1040,179 @@ draw();
 </script>"""
 
     st.components.v1.html(html_part1 + chart_data + html_part2, height=len(rows)*34+600, scrolling=False)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 4 — Territory Comparison (Google vs Bing by Region)
+# ══════════════════════════════════════════════════════════════════════════════
+with tab4:
+    MONTH_NUM4 = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
+                  "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12}
+    MONTHS4 = list(MONTH_NUM4.keys())
+    YEARS4  = [str(y) for y in range(2024, today.year+1)]
+
+    tf1, tf2 = st.columns([3,1])
+    with tf1:
+        fc1, fc2, fc3, fc4 = st.columns(4)
+        with fc1: t4_fm = st.selectbox("From month", MONTHS4, index=0, key="t4_fm")
+        with fc2: t4_fy = st.selectbox("From year",  YEARS4,  index=0, key="t4_fy")
+        with fc3: t4_tm = st.selectbox("To month",   MONTHS4, index=MONTHS4.index(today.strftime("%b")), key="t4_tm")
+        with fc4: t4_ty = st.selectbox("To year",    YEARS4,  index=len(YEARS4)-1, key="t4_ty")
+
+    t4_fy_i = int(t4_fy); t4_ty_i = int(t4_ty)
+
+    # Load data
+    g_offices = get_regional_data(t4_fy_i, MONTH_NUM4[t4_fm], t4_ty_i, MONTH_NUM4[t4_tm])
+    b_offices = get_bing_regional_data(t4_fy_i, MONTH_NUM4[t4_fm], t4_ty_i, MONTH_NUM4[t4_tm])
+    g_detail  = get_regional_detail(t4_fy_i, MONTH_NUM4[t4_fm], t4_ty_i, MONTH_NUM4[t4_tm])
+    b_detail  = get_bing_regional_detail(t4_fy_i, MONTH_NUM4[t4_fm], t4_ty_i, MONTH_NUM4[t4_tm])
+
+    # Summary totals
+    g_ul   = sum(o["ul"]   for o in g_offices)
+    g_apt  = sum(o["apt"]  for o in g_offices)
+    g_cust = sum(o["cust"] for o in g_offices)
+    g_sales= sum(o["sales"]for o in g_offices)
+    b_ul   = sum(o["ul"]   for o in b_offices)
+    b_apt  = sum(o["apt"]  for o in b_offices)
+    b_cust = sum(o["cust"] for o in b_offices)
+    b_sales= sum(o["sales"]for o in b_offices)
+    tot_ul   = g_ul   + b_ul
+    tot_apt  = g_apt  + b_apt
+    tot_cust = g_cust + b_cust
+    tot_sales= g_sales+ b_sales
+
+    def pct_bar(g, b):
+        total = g + b
+        gw = round(g/total*100) if total else 50
+        bw = 100 - gw
+        return (f'<div style="height:4px;background:#e5e7eb;border-radius:2px;margin-top:5px;display:flex;overflow:hidden;">'
+                f'<div style="width:{gw}%;background:#378ADD;"></div>'
+                f'<div style="width:{bw}%;background:#7F77DD;"></div></div>')
+
+    def fmt_sales(v):
+        if v >= 1_000_000: return f"${v/1_000_000:.1f}M"
+        if v >= 1_000: return f"${v/1_000:.0f}K"
+        return f"${v:,.0f}"
+
+    # Summary cards
+    mc_style = "background:#f9fafb;border:0.5px solid #e5e7eb;border-radius:8px;padding:10px 12px;"
+    st.markdown(
+        f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px;">'
+        f'<div style="{mc_style}"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Total leads</div>'
+        f'<div style="font-size:18px;font-weight:500;">{tot_ul:,}</div>'
+        f'<div style="font-size:10px;margin-top:3px;display:flex;gap:6px;"><span style="color:#378ADD;">G {g_ul:,}</span><span style="color:#7F77DD;">B {b_ul:,}</span></div>'
+        f'{pct_bar(g_ul,b_ul)}</div>'
+        f'<div style="{mc_style}"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Appointments</div>'
+        f'<div style="font-size:18px;font-weight:500;">{tot_apt:,}</div>'
+        f'<div style="font-size:10px;margin-top:3px;display:flex;gap:6px;"><span style="color:#378ADD;">G {g_apt:,}</span><span style="color:#7F77DD;">B {b_apt:,}</span></div>'
+        f'{pct_bar(g_apt,b_apt)}</div>'
+        f'<div style="{mc_style}"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Customers</div>'
+        f'<div style="font-size:18px;font-weight:500;">{tot_cust:,}</div>'
+        f'<div style="font-size:10px;margin-top:3px;display:flex;gap:6px;"><span style="color:#378ADD;">G {g_cust:,}</span><span style="color:#7F77DD;">B {b_cust:,}</span></div>'
+        f'{pct_bar(g_cust,b_cust)}</div>'
+        f'<div style="{mc_style}"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Sales</div>'
+        f'<div style="font-size:18px;font-weight:500;">{fmt_sales(tot_sales)}</div>'
+        f'<div style="font-size:10px;margin-top:3px;display:flex;gap:6px;"><span style="color:#378ADD;">G {fmt_sales(g_sales)}</span><span style="color:#7F77DD;">B {fmt_sales(b_sales)}</span></div>'
+        f'{pct_bar(int(g_sales),int(b_sales))}</div>'
+        f'</div>',
+        unsafe_allow_html=True
+    )
+
+    # Build panel HTML for one source
+    def build_panel(offices, detail, color, source_label, badge_class, prefix):
+        th_s = "padding:7px 10px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:right;font-weight:400;"
+        td_s = "padding:6px 10px;border-bottom:0.5px solid #f3f4f6;text-align:right;font-size:12px;color:#374151;"
+        td_l = "padding:6px 10px;border-bottom:0.5px solid #f3f4f6;text-align:left;font-size:12px;font-weight:500;color:#111827;"
+
+        tot_ul   = sum(o["ul"]   for o in offices)
+        tot_apt  = sum(o["apt"]  for o in offices)
+        tot_cust = sum(o["cust"] for o in offices)
+        tot_sales= sum(o["sales"]for o in offices)
+
+        rows_html = ""
+        for o in sorted(offices, key=lambda x: -x["ul"]):
+            key = f"{prefix}_{o['name'].replace(' ','_').replace('/','_')}"
+            has_det = o["name"] in detail
+
+            # Campaign detail rows
+            det_html = ""
+            if has_det:
+                det_html = (f'<tr id="det_{key}" style="display:none;">'
+                            f'<td colspan="5" style="padding:0;">'
+                            f'<table style="width:100%;border-collapse:collapse;background:#f8fafc;">'
+                            f'<thead><tr style="background:#1f2937;">'
+                            f'<th style="text-align:left;padding:6px 20px;font-size:10px;color:#9ca3af;text-transform:uppercase;">Campaign</th>'
+                            f'<th style="{th_s}">Leads</th><th style="{th_s}">Apt</th>'
+                            f'<th style="{th_s}">Cust</th><th style="{th_s}">Sales</th>'
+                            f'</tr></thead><tbody>')
+                for camp in sorted(detail[o["name"]], key=lambda x: -x["ul"]):
+                    det_html += (f'<tr style="border-bottom:0.5px solid #e2e8f0;">'
+                                 f'<td style="padding:5px 20px;font-size:11px;font-weight:500;color:#374151;">{camp["campaign"]}</td>'
+                                 f'<td style="text-align:right;padding:5px 10px;font-size:11px;color:{color};">{camp["ul"]:,}</td>'
+                                 f'<td style="text-align:right;padding:5px 10px;font-size:11px;">{camp["apt"]:,}</td>'
+                                 f'<td style="text-align:right;padding:5px 10px;font-size:11px;">{camp["cust"]:,}</td>'
+                                 f'<td style="text-align:right;padding:5px 10px;font-size:11px;">${camp["sales"]:,.0f}</td>'
+                                 f'</tr>')
+                det_html += '</tbody></table></td></tr>'
+
+            expand = f'<span id="btn_{key}" onclick="t4toggle(\'{key}\')" style="cursor:pointer;margin-left:6px;font-size:11px;color:#6b7280;">&#9658;</span>' if has_det else ""
+            onclick = f'onclick="t4toggle(\'{key}\')"' if has_det else ""
+            rows_html += (f'<tr {onclick} style="cursor:{"pointer" if has_det else "default"};">'
+                          f'<td style="{td_l}">{o["name"]}{expand}</td>'
+                          f'<td style="{td_s};color:{color};">{o["ul"]:,}</td>'
+                          f'<td style="{td_s}">{o["apt"]:,}</td>'
+                          f'<td style="{td_s}">{o["cust"]:,}</td>'
+                          f'<td style="{td_s}">${o["sales"]:,.0f}</td>'
+                          f'</tr>') + det_html
+
+        # Total row
+        rows_html += (f'<tr style="background:#111827;">'
+                      f'<td style="text-align:left;padding:7px 10px;font-size:12px;font-weight:600;color:#fff;">Total</td>'
+                      f'<td style="text-align:right;padding:7px 10px;font-size:12px;font-weight:600;color:#B5D4F4 if color=="#185FA5" else "#AFA9EC";">{tot_ul:,}</td>'
+                      f'<td style="text-align:right;padding:7px 10px;font-size:12px;color:#fff;">{tot_apt:,}</td>'
+                      f'<td style="text-align:right;padding:7px 10px;font-size:12px;color:#fff;">{tot_cust:,}</td>'
+                      f'<td style="text-align:right;padding:7px 10px;font-size:12px;color:#fff;">${tot_sales:,.0f}</td>'
+                      f'</tr>')
+
+        return (f'<div style="border:0.5px solid #e5e7eb;border-radius:12px;overflow:hidden;">'
+                f'<div style="padding:9px 12px;border-bottom:0.5px solid #e5e7eb;background:#f9fafb;display:flex;justify-content:space-between;align-items:center;">'
+                f'<span style="font-size:12px;font-weight:500;">{source_label}</span>'
+                f'<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:3px;" class="{badge_class}">{source_label.split(" — ")[0]}</span>'
+                f'</div>'
+                f'<table style="width:100%;border-collapse:collapse;">'
+                f'<thead><tr style="background:#111827;">'
+                f'<th style="text-align:left;padding:7px 10px;font-size:10px;color:#fff;text-transform:uppercase;min-width:140px;">Region</th>'
+                f'<th style="{th_s}">Leads</th><th style="{th_s}">Apt</th>'
+                f'<th style="{th_s}">Cust</th><th style="{th_s}">Sales</th>'
+                f'</tr></thead>'
+                f'<tbody>{rows_html}</tbody>'
+                f'</table></div>')
+
+    g_panel = build_panel(g_offices, g_detail, "#185FA5", "Google — Ads", "src-g", "g")
+    b_panel = build_panel(b_offices, b_detail, "#534AB7", "Bing — Microsoft Ads", "src-b", "b")
+
+    toggle_js = """
+<script>
+function t4toggle(key){
+  var row = document.getElementById('det_'+key);
+  var btn = document.getElementById('btn_'+key);
+  if(!row) return;
+  if(row.style.display==='none'||row.style.display===''){
+    row.style.display='table-row';
+    if(btn) btn.style.transform='rotate(90deg)';
+  } else {
+    row.style.display='none';
+    if(btn) btn.style.transform='';
+  }
+}
+</script>
+<style>
+.src-g{background:#E6F1FB;color:#0C447C;}
+.src-b{background:#EEEDFE;color:#3C3489;}
+</style>
+"""
+
+    combined_html = (f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
+                     f'{g_panel}{b_panel}</div>{toggle_js}')
+
+    total_rows = max(len(g_offices), len(b_offices))
+    st.components.v1.html(combined_html, height=total_rows*38+300, scrolling=False)
