@@ -124,14 +124,14 @@ def get_bing_regional_data(from_year=None, from_month=None, to_year=None, to_mon
     ) for name, d in offices.items()]
 
 
-@st.cache_data(ttl=300)
 def get_bing_regional_detail(from_year=None, from_month=None, to_year=None, to_month=None) -> dict:
     """Reads Tab2_Regional_Detail from Bing dashboard sheet."""
+    import streamlit as st
     try:
         df = _read_bing_sheet("Tab2_Regional_Detail", header_row=0)
-        # Strip whitespace from column names first
         df.columns = [str(c).strip() for c in df.columns]
-        print(f"Bing Tab2_Regional_Detail raw columns: {list(df.columns)}")
+        st.write(f"DEBUG Tab2_Regional_Detail columns: {list(df.columns)[:6]}")
+        st.write(f"DEBUG rows: {len(df)}")
         detail_map = {
             "Regional Office":"region","Year":"year","Month":"month","Campaign":"campaign",
             "Unique Leads":"ul","New Leads":"nl","Appointments":"apt","Apt":"apt",
