@@ -84,8 +84,9 @@ def get_bing_regional_data(from_year=None, from_month=None, to_year=None, to_mon
     df = df.dropna(subset=["name"])
     df["name"] = df["name"].astype(str).str.strip()
     # Filter out junk rows — zeros, header text, non-region entries
-    JUNK = ["row","update","office","regional","add new","appointment set","0"]
-    df = df[df["name"].apply(lambda x: bool(x) and x != "nan" and not any(j in x.lower() for j in JUNK))]
+    JUNK_CONTAINS = ["row","update","office","regional","add new","appointment set"]
+    JUNK_EXACT = ["0","nan",""]
+    df = df[df["name"].apply(lambda x: bool(x) and x not in JUNK_EXACT and not any(j in x.lower() for j in JUNK_CONTAINS))]
 
     MONTH_MAP = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
                  "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12,
@@ -121,6 +122,7 @@ def get_bing_regional_data(from_year=None, from_month=None, to_year=None, to_mon
     ) for name, d in offices.items()]
 
 
+@st.cache_data(ttl=300)
 def get_bing_regional_detail(from_year=None, from_month=None, to_year=None, to_month=None) -> dict:
     """Reads Tab2_Regional_Detail from Bing dashboard sheet."""
     try:
@@ -139,8 +141,9 @@ def get_bing_regional_detail(from_year=None, from_month=None, to_year=None, to_m
         df = df.dropna(subset=["region","campaign"])
         df["region"]   = df["region"].astype(str).str.replace("–","-").str.strip()
         df["campaign"] = df["campaign"].astype(str).str.replace("–","-").str.strip()
-        JUNK = ["row","update","office","regional","add new","appointment set","0"]
-        df = df[df["region"].apply(lambda x: bool(x) and x != "nan" and not any(j in x.lower() for j in JUNK))]
+        JUNK_CONTAINS = ["row","update","office","regional","add new","appointment set"]
+        JUNK_EXACT = ["0","nan",""]
+        df = df[df["region"].apply(lambda x: bool(x) and x not in JUNK_EXACT and not any(j in x.lower() for j in JUNK_CONTAINS))]
         df = df[df["campaign"].apply(lambda x: bool(x) and x != "nan")]
 
         MONTH_MAP = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
@@ -180,7 +183,9 @@ def get_bing_regional_detail(from_year=None, from_month=None, to_year=None, to_m
             ))
         return result
     except Exception as e:
+        import traceback
         print(f"Error reading Bing Tab2_Regional_Detail: {e}")
+        traceback.print_exc()
         return {}
 
 
