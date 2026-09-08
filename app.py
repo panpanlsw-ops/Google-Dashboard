@@ -1067,10 +1067,6 @@ with tab4:
     b_map = {o["name"]: o for o in b_offices}
     all_regions = sorted(set(list(g_map.keys()) + list(b_map.keys())))
 
-    # Debug — remove after fixing
-    st.write(f"Bing regions: {list(b_map.keys())}")
-    st.write(f"Bing detail keys: {list(b_detail.keys())[:5] if b_detail else 'EMPTY'}")
-    st.write(f"Bing offices count: {len(b_offices)}")
 
     def sv4(v):
         try: return int(float(v)) if float(v)==float(v) else 0
