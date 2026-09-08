@@ -1175,17 +1175,24 @@ with tab4:
                 f'<tr id="d_{key}" style="display:none;">' +
                 f'<td colspan="10" style="padding:0;">' +
                 f'<table style="width:100%;border-collapse:collapse;">' +
-                f'<thead><tr style="background:#1f2937;">' +
-                f'<th style="text-align:left;padding:5px 8px 5px 20px;font-size:10px;color:#9ca3af;text-transform:uppercase;">Campaign</th>' +
-                f'<th style="padding:5px 8px;font-size:10px;color:#B5D4F4;text-transform:uppercase;text-align:right;">G Leads</th>' +
-                f'<th style="padding:5px 8px;font-size:10px;color:#B5D4F4;text-transform:uppercase;text-align:right;">G Apt</th>' +
-                f'<th style="padding:5px 8px;font-size:10px;color:#B5D4F4;text-transform:uppercase;text-align:right;">G Cust</th>' +
-                f'<th style="padding:5px 8px;font-size:10px;color:#AFA9EC;text-transform:uppercase;text-align:right;">B Leads</th>' +
-                f'<th style="padding:5px 8px;font-size:10px;color:#AFA9EC;text-transform:uppercase;text-align:right;">B Apt</th>' +
-                f'<th style="padding:5px 8px;font-size:10px;color:#AFA9EC;text-transform:uppercase;text-align:right;">B Cust</th>' +
-                f'<th style="padding:5px 8px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:right;">Total Leads</th>' +
-                f'<th style="padding:5px 8px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:right;">Total Apt</th>' +
-                f'<th style="padding:5px 8px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:right;">Total Cust</th>' +
+                f'<thead>' +
+                f'<tr style="background:#1f2937;">' +
+                f'<th style="text-align:left;padding:5px 8px 5px 20px;font-size:10px;color:#fff;text-transform:uppercase;min-width:150px;">Campaign</th>' +
+                f'<th colspan="3" style="padding:5px 8px;font-size:10px;color:#B5D4F4;text-transform:uppercase;text-align:center;background:#0c447c22;">Google</th>' +
+                f'<th colspan="3" style="padding:5px 8px;font-size:10px;color:#AFA9EC;text-transform:uppercase;text-align:center;background:#3c348922;">Bing</th>' +
+                f'<th colspan="3" style="padding:5px 8px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:center;">Total</th>' +
+                f'</tr>' +
+                f'<tr style="background:#111827;">' +
+                f'<th style="padding:5px 8px 5px 20px;font-size:10px;color:#6b7280;text-transform:uppercase;text-align:left;min-width:150px;"></th>' +
+                f'<th style="padding:5px 8px;font-size:10px;color:#B5D4F4;text-align:right;">Leads</th>' +
+                f'<th style="padding:5px 8px;font-size:10px;color:#B5D4F4;text-align:right;">Apt</th>' +
+                f'<th style="padding:5px 8px;font-size:10px;color:#B5D4F4;text-align:right;">Cust</th>' +
+                f'<th style="padding:5px 8px;font-size:10px;color:#AFA9EC;text-align:right;">Leads</th>' +
+                f'<th style="padding:5px 8px;font-size:10px;color:#AFA9EC;text-align:right;">Apt</th>' +
+                f'<th style="padding:5px 8px;font-size:10px;color:#AFA9EC;text-align:right;">Cust</th>' +
+                f'<th style="padding:5px 8px;font-size:10px;color:#9ca3af;text-align:right;">Leads</th>' +
+                f'<th style="padding:5px 8px;font-size:10px;color:#9ca3af;text-align:right;">Apt</th>' +
+                f'<th style="padding:5px 8px;font-size:10px;color:#9ca3af;text-align:right;">Cust</th>' +
                 f'</tr></thead><tbody>{det_rows}</tbody></table>' +
                 f'</td></tr>'
             )
