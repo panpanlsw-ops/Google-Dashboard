@@ -190,7 +190,8 @@ def get_bing_regional_detail(from_year=None, from_month=None, to_year=None, to_m
         return result
     except Exception as e:
         import traceback
-        print(f"Error reading Bing Tab2_Regional_Detail: {e}")
+        import streamlit as st
+        st.error(f"Bing detail error: {e}")
         traceback.print_exc()
         return {}
 
