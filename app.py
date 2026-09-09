@@ -1042,13 +1042,13 @@ draw();
     st.components.v1.html(html_part1 + chart_data + html_part2, height=len(rows)*34+600, scrolling=False)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TAB 4 — Territory Comparison (total columns + G/B badge campaign breakdown)
+# TAB 4 — Territory Comparison
 # ══════════════════════════════════════════════════════════════════════════════
 with tab4:
     MONTH_NUM4 = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
                   "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12}
     MONTHS4 = list(MONTH_NUM4.keys())
-    YEARS4  = ['2025', '2026']
+    YEARS4  = ["2025", "2026"]
 
     fc1, fc2, fc3, fc4 = st.columns(4)
     with fc1: t4_fm = st.selectbox("From month", MONTHS4, index=0, key="t4_fm")
@@ -1065,27 +1065,30 @@ with tab4:
 
     g_map = {o["name"]: o for o in g_offices}
     b_map = {o["name"]: o for o in b_offices}
-    all_regions = sorted(set(list(g_map.keys()) + list(b_map.keys())))
-    # Filter out junk region names
-    JUNK_REGIONS = ["0", "nan", "", "appointment setters", "appointment set"]
-    all_regions = [r for r in all_regions if r and r not in ["0","nan",""] and not any(j in r.lower() for j in ["appointment set"])]
 
     def sv4(v):
         try: return int(float(v)) if float(v)==float(v) else 0
         except: return 0
-
     def fmts4(v):
         if v >= 1_000_000: return f"${v/1_000_000:.1f}M"
         if v >= 1_000: return f"${v/1_000:.0f}K"
         return f"${v:,.0f}"
+    def fmt_pct(n, d): return f"{n/d*100:.1f}%" if d else "—"
 
-    def pct_bar4(g, b):
-        t = g + b
-        gw = round(g/t*100) if t else 50
-        return (f'<div style="height:4px;background:#e5e7eb;border-radius:2px;margin-top:5px;display:flex;overflow:hidden;">' +
-                f'<div style="width:{gw}%;background:#378ADD;height:100%;"></div>' +
-                f'<div style="width:{100-gw}%;background:#7F77DD;height:100%;"></div></div>')
+    # Filter and sort regions
+    JUNK = ["0","nan",""]
+    all_regions = sorted(
+        [r for r in set(list(g_map.keys())+list(b_map.keys()))
+         if r and r not in JUNK and "appointment set" not in r.lower()],
+        key=lambda r: (
+            -(sv4(g_map.get(r,{}).get("ul",0))+sv4(b_map.get(r,{}).get("ul",0))),
+            -(float(g_map.get(r,{}).get("sales",0) or 0)+float(b_map.get(r,{}).get("sales",0) or 0))
+        )
+    )
+    # Filter zero-lead regions
+    all_regions = [r for r in all_regions if sv4(g_map.get(r,{}).get("ul",0))+sv4(b_map.get(r,{}).get("ul",0)) > 0]
 
+    # Summary totals
     g_ul   = sum(o["ul"]   for o in g_offices)
     g_apt  = sum(o["apt"]  for o in g_offices)
     g_cust = sum(o["cust"] for o in g_offices)
@@ -1094,6 +1097,13 @@ with tab4:
     b_apt  = sum(o["apt"]  for o in b_offices)
     b_cust = sum(o["cust"] for o in b_offices)
     b_sales= sum(o["sales"]for o in b_offices)
+
+    def pct_bar4(g, b):
+        t = g + b
+        gw = round(g/t*100) if t else 50
+        return (f'<div style="height:4px;background:#e5e7eb;border-radius:2px;margin-top:5px;display:flex;overflow:hidden;">' +
+                f'<div style="width:{gw}%;background:#378ADD;height:100%;"></div>' +
+                f'<div style="width:{100-gw}%;background:#7F77DD;height:100%;"></div></div>')
 
     mc = "background:#f9fafb;border:0.5px solid #e5e7eb;border-radius:8px;padding:10px 12px;"
     summary_html = (
@@ -1116,141 +1126,133 @@ with tab4:
         pct_bar4(int(g_sales),int(b_sales))+'</div></div>'
     )
 
-    td  = "padding:8px 10px;border-bottom:0.5px solid #f3f4f6;text-align:right;font-size:12px;color:#374151;"
-    tdl = "padding:8px 10px;border-bottom:0.5px solid #f3f4f6;text-align:left;font-size:12px;font-weight:500;color:#111827;"
-    dg  = "padding:6px 10px;font-size:11px;text-align:right;border-bottom:0.5px solid #e2e8f0;background:#f0f7ff;color:#185FA5;"
-    db  = "padding:6px 10px;font-size:11px;text-align:right;border-bottom:0.5px solid #e2e8f0;background:#f5f3ff;color:#534AB7;"
-    dgl = "padding:6px 10px 6px 20px;font-size:11px;text-align:left;font-weight:500;border-bottom:0.5px solid #e2e8f0;background:#f0f7ff;color:#374151;"
-    dbl = "padding:6px 10px 6px 20px;font-size:11px;text-align:left;font-weight:500;border-bottom:0.5px solid #e2e8f0;background:#f5f3ff;color:#374151;"
+    grand_ul    = sum(sv4(g_map.get(r,{}).get("ul",0))+sv4(b_map.get(r,{}).get("ul",0)) for r in all_regions)
+    grand_sales = sum(float(g_map.get(r,{}).get("sales",0) or 0)+float(b_map.get(r,{}).get("sales",0) or 0) for r in all_regions)
+
     g_badge = '<span style="font-size:9px;font-weight:600;padding:1px 5px;border-radius:2px;margin-left:5px;background:#E6F1FB;color:#0C447C;">Google</span>'
     b_badge = '<span style="font-size:9px;font-weight:600;padding:1px 5px;border-radius:2px;margin-left:5px;background:#EEEDFE;color:#3C3489;">Bing</span>'
 
+    # Column widths — shared between region rows and campaign rows
+    COL_W = "30%;7%;7%;7%;9%;7%;7%;7%;7%;6%"
+    cols  = COL_W.split(";")
+
+    def th_s(c, txt, align="right"):
+        return f'<th style="padding:7px 10px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:{align};font-weight:400;width:{c};">{txt}</th>'
+
+    header = (
+        f'<colgroup>{"".join(f"<col style=\"width:{c};\">" for c in cols)}</colgroup>' +
+        f'<thead><tr style="background:#111827;">' +
+        th_s(cols[0], "Region", "left") +
+        th_s(cols[1], "Leads") + th_s(cols[2], "Apt") +
+        th_s(cols[3], "Cust") + th_s(cols[4], "Sales") +
+        th_s(cols[5], "Leads %") + th_s(cols[6], "Sales %") +
+        th_s(cols[7], "Apt/Leads") + th_s(cols[8], "Order/Apt") +
+        th_s(cols[9], "Order/Leads") +
+        f'</tr></thead>'
+    )
+
+    def camp_header_row():
+        bg = "#1f2937"
+        s = f'<tr style="background:{bg};">' + f'<td style="padding:6px 10px 6px 20px;font-size:10px;color:#9ca3af;text-transform:uppercase;width:{cols[0]};">Campaign</td>'
+        for i, lbl in enumerate(["Leads","Apt","Cust","Sales","","","","",""]):
+            s += f'<td style="padding:6px 10px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:right;width:{cols[i+1]};">{lbl}</td>'
+        return s + "</tr>"
+
+    def camp_row(name, badge, ul, apt, cust, sales, is_g):
+        bg_l = "#f0f7ff" if is_g else "#f5f3ff"
+        bg_v = "#f0f7ff" if is_g else "#f5f3ff"
+        cv   = "#185FA5" if is_g else "#534AB7"
+        s = f'<tr style="background:{bg_l};">' + f'<td style="padding:6px 10px 6px 20px;font-size:11px;font-weight:500;color:#374151;width:{cols[0]};">{name}{badge}</td>'
+        for i, (v, fmt) in enumerate([(ul,f"{ul:,}"),(apt,f"{apt:,}"),(cust,f"{cust:,}"),(sales,fmts4(sales))]):
+            s += f'<td style="padding:6px 10px;font-size:11px;text-align:right;color:{cv};background:{bg_v};width:{cols[i+1]};">{fmt}</td>'
+        for i in range(5):
+            s += f'<td style="background:{bg_v};width:{cols[i+5]};"></td>'
+        return s + "</tr>"
+
     rows_html = ""
-    total_ul = total_apt = total_cust = 0
-    total_sales = 0.0
-
-    # Pre-calculate grand totals for % columns
-    grand_ul = sum(sv4(g_map.get(r,{}).get("ul",0)) + sv4(b_map.get(r,{}).get("ul",0)) for r in all_regions)
-    grand_sales = sum(float(g_map.get(r,{}).get("sales",0) or 0) + float(b_map.get(r,{}).get("sales",0) or 0) for r in all_regions)
-
-    def fmt_pct(n, d):
-        return f"{n/d*100:.1f}%" if d else "—"
-    def fmt_ratio(n, d):
-        return f"{n/d*100:.1f}%" if d else "—" 
-
-    # Sort regions by total leads desc, then sales desc
-    def reg_sort_key(r):
-        g = g_map.get(r, {}); b = b_map.get(r, {})
-        ul = sv4(g.get("ul",0)) + sv4(b.get("ul",0))
-        sales = float(g.get("sales",0) or 0) + float(b.get("sales",0) or 0)
-        return (-ul, -sales)
-    all_regions = sorted(all_regions, key=reg_sort_key)
+    total_ul = total_apt = total_cust = 0; total_sales = 0.0
 
     for reg in all_regions:
-        # Skip regions with zero total leads
-        g_test = g_map.get(reg, {}); b_test = b_map.get(reg, {})
-        if sv4(g_test.get("ul",0)) + sv4(b_test.get("ul",0)) == 0:
-            continue
-        g = g_map.get(reg, {})
-        b = b_map.get(reg, {})
-        g_ul_r   = sv4(g.get("ul",0));   b_ul_r   = sv4(b.get("ul",0))
-        g_apt_r  = sv4(g.get("apt",0));  b_apt_r  = sv4(b.get("apt",0))
-        g_cust_r = sv4(g.get("cust",0)); b_cust_r = sv4(b.get("cust",0))
-        g_sales_r= float(g.get("sales",0) or 0); b_sales_r= float(b.get("sales",0) or 0)
-        t_ul = g_ul_r+b_ul_r; t_apt = g_apt_r+b_apt_r
-        t_cust = g_cust_r+b_cust_r; t_sales = g_sales_r+b_sales_r
-        total_ul += t_ul; total_apt += t_apt
-        total_cust += t_cust; total_sales += t_sales
+        g = g_map.get(reg, {}); b = b_map.get(reg, {})
+        g_ul_r=sv4(g.get("ul",0)); b_ul_r=sv4(b.get("ul",0))
+        g_apt_r=sv4(g.get("apt",0)); b_apt_r=sv4(b.get("apt",0))
+        g_cust_r=sv4(g.get("cust",0)); b_cust_r=sv4(b.get("cust",0))
+        g_s=float(g.get("sales",0) or 0); b_s=float(b.get("sales",0) or 0)
+        t_ul=g_ul_r+b_ul_r; t_apt=g_apt_r+b_apt_r
+        t_cust=g_cust_r+b_cust_r; t_sales=g_s+b_s
+        total_ul+=t_ul; total_apt+=t_apt; total_cust+=t_cust; total_sales+=t_sales
 
         key = reg.replace(" ","_").replace("/","_").replace("-","_")
-
         g_camps = g_detail.get(reg, [])
         b_camps = b_detail.get(reg, [])
-        # Combine and tag each camp with source, sort by leads then sales
-        all_camps_tagged = (
-            [{"src":"g","data":c} for c in g_camps] +
-            [{"src":"b","data":c} for c in b_camps]
-        )
-        all_camps_tagged.sort(key=lambda x: (-sv4(x["data"].get("ul",0)), -float(x["data"].get("sales",0) or 0)))
-        det_rows = ""
-        for item in all_camps_tagged:
-            c = item["data"]; src = item["src"]
-            ul=sv4(c.get("ul",0)); apt=sv4(c.get("apt",0))
-            cust=sv4(c.get("cust",0)); sales=float(c.get("sales",0) or 0)
-            if src == "g":
-                det_rows += (f'<tr><td style="{dgl}">{c["campaign"]}{g_badge}</td>' +
-                             f'<td style="{dg}">{ul:,}</td><td style="{dg}">{apt:,}</td>' +
-                             f'<td style="{dg}">{cust:,}</td><td style="{dg}">{fmts4(sales)}</td></tr>')
-            else:
-                det_rows += (f'<tr><td style="{dbl}">{c["campaign"]}{b_badge}</td>' +
-                             f'<td style="{db}">{ul:,}</td><td style="{db}">{apt:,}</td>' +
-                             f'<td style="{db}">{cust:,}</td><td style="{db}">{fmts4(sales)}</td></tr>')
+        has_det = bool(g_camps or b_camps)
 
-        has_det = bool(det_rows)
         expand = (f'<span id="e_{key}" onclick="t4tog(\'{key}\')" ' +
                   f'style="cursor:pointer;margin-left:5px;font-size:11px;color:#6b7280;display:inline-block;">&#9658;</span>') if has_det else ""
         onclick = f'onclick="t4tog(\'{key}\')" style="cursor:pointer;"' if has_det else ""
 
+        td = "padding:7px 10px;border-bottom:0.5px solid #f3f4f6;text-align:right;font-size:12px;color:#374151;"
+        tdl = "padding:7px 10px;border-bottom:0.5px solid #f3f4f6;text-align:left;font-size:12px;font-weight:500;color:#111827;"
         rows_html += (
             f'<tr {onclick}>' +
             f'<td style="{tdl}">{reg}{expand}</td>' +
-            f'<td style="{td}">{t_ul:,}</td>' +
-            f'<td style="{td}">{t_apt:,}</td>' +
-            f'<td style="{td}">{t_cust:,}</td>' +
-            f'<td style="{td}">{fmts4(t_sales)}</td>' +
-            f'<td style="{td}">{fmt_pct(t_ul, grand_ul)}</td>' +
-            f'<td style="{td}">{fmt_pct(t_sales, grand_sales)}</td>' +
-            f'<td style="{td}">{fmt_ratio(t_apt, t_ul)}</td>' +
-            f'<td style="{td}">{fmt_ratio(t_cust, t_apt)}</td>' +
-            f'<td style="{td}">{fmt_ratio(t_cust, t_ul)}</td>' +
+            f'<td style="{td}">{t_ul:,}</td><td style="{td}">{t_apt:,}</td>' +
+            f'<td style="{td}">{t_cust:,}</td><td style="{td}">{fmts4(t_sales)}</td>' +
+            f'<td style="{td}">{fmt_pct(t_ul,grand_ul)}</td>' +
+            f'<td style="{td}">{fmt_pct(t_sales,grand_sales)}</td>' +
+            f'<td style="{td}">{fmt_pct(t_apt,t_ul)}</td>' +
+            f'<td style="{td}">{fmt_pct(t_cust,t_apt)}</td>' +
+            f'<td style="{td}">{fmt_pct(t_cust,t_ul)}</td>' +
             f'</tr>'
         )
+
         if has_det:
+            # Combine and sort campaigns
+            all_camps_tagged = (
+                [{"src":"g","data":c} for c in g_camps] +
+                [{"src":"b","data":c} for c in b_camps]
+            )
+            all_camps_tagged.sort(key=lambda x: (-sv4(x["data"].get("ul",0)), -float(x["data"].get("sales",0) or 0)))
+
+            det_rows = camp_header_row()
+            for item in all_camps_tagged:
+                c=item["data"]; is_g=(item["src"]=="g")
+                badge = g_badge if is_g else b_badge
+                det_rows += camp_row(
+                    c["campaign"], badge,
+                    sv4(c.get("ul",0)), sv4(c.get("apt",0)),
+                    sv4(c.get("cust",0)), float(c.get("sales",0) or 0),
+                    is_g
+                )
+
             rows_html += (
                 f'<tr id="d_{key}" style="display:none;">' +
                 f'<td colspan="10" style="padding:0;">' +
                 f'<table style="width:100%;border-collapse:collapse;table-layout:fixed;">' +
-                f'<colgroup>' +
-                f'<col style="width:37%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:9%">' +
-                f'<col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:5%">' +
-                f'</colgroup>' +
-                f'<thead><tr style="background:#1f2937;">' +
-                f'<th style="text-align:left;padding:6px 20px;font-size:10px;color:#9ca3af;text-transform:uppercase;">Campaign</th>' +
-                f'<th style="padding:6px 10px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:right;">Leads</th>' +
-                f'<th style="padding:6px 10px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:right;">Apt</th>' +
-                f'<th style="padding:6px 10px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:right;">Cust</th>' +
-                f'<th style="padding:6px 10px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:right;">Sales</th>' +
-                f'<th colspan="5"></th>' +
-                f'</tr></thead><tbody>{det_rows}</tbody></table>' +
-                f'</td></tr>'
+                f'<colgroup>{"".join(f"<col style=\"width:{c};\">" for c in cols)}</colgroup>' +
+                f'<tbody>{det_rows}</tbody></table></td></tr>'
             )
 
+    # Total row
     rows_html += (
         f'<tr style="background:#111827;">' +
-        f'<td style="text-align:left;padding:8px 10px;font-size:12px;font-weight:500;color:#fff;">Total</td>' +
-        f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;font-weight:500;">{total_ul:,}</td>' +
-        f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;font-weight:500;">{total_apt:,}</td>' +
-        f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;font-weight:500;">{total_cust:,}</td>' +
-        f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;font-weight:500;">{fmts4(total_sales)}</td>' +
-        f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;">100%</td>' +
-        f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;">100%</td>' +
-        f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;">{fmt_ratio(total_apt,total_ul)}</td>' +
-        f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;">{fmt_ratio(total_cust,total_apt)}</td>' +
-        f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;">{fmt_ratio(total_cust,total_ul)}</td>' +
+        f'<td style="text-align:left;padding:7px 10px;font-size:12px;font-weight:500;color:#fff;">Total</td>' +
+        f'<td style="text-align:right;padding:7px 10px;font-size:12px;color:#fff;font-weight:500;">{total_ul:,}</td>' +
+        f'<td style="text-align:right;padding:7px 10px;font-size:12px;color:#fff;">{total_apt:,}</td>' +
+        f'<td style="text-align:right;padding:7px 10px;font-size:12px;color:#fff;">{total_cust:,}</td>' +
+        f'<td style="text-align:right;padding:7px 10px;font-size:12px;color:#fff;">{fmts4(total_sales)}</td>' +
+        f'<td style="text-align:right;padding:7px 10px;font-size:12px;color:#fff;">100%</td>' +
+        f'<td style="text-align:right;padding:7px 10px;font-size:12px;color:#fff;">100%</td>' +
+        f'<td style="text-align:right;padding:7px 10px;font-size:12px;color:#fff;">{fmt_pct(total_apt,total_ul)}</td>' +
+        f'<td style="text-align:right;padding:7px 10px;font-size:12px;color:#fff;">{fmt_pct(total_cust,total_apt)}</td>' +
+        f'<td style="text-align:right;padding:7px 10px;font-size:12px;color:#fff;">{fmt_pct(total_cust,total_ul)}</td>' +
         f'</tr>'
     )
 
-    th = "padding:7px 10px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:right;font-weight:400;"
     table_html = f"""
-<div style="border:0.5px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-<table style="width:100%;border-collapse:collapse;">
-<thead><tr style="background:#111827;">
-  <th style="text-align:left;padding:7px 12px;font-size:10px;color:#fff;text-transform:uppercase;min-width:180px;">Region</th>
-  <th style="{th}">Leads</th><th style="{th}">Apt</th>
-  <th style="{th}">Cust</th><th style="{th}">Sales</th>
-  <th style="{th}">Leads %</th><th style="{th}">Sales %</th>
-  <th style="{th}">Apt/Leads</th><th style="{th}">Order/Apt</th><th style="{th}">Order/Leads</th>
-</tr></thead>
+<div style="border:0.5px solid #e5e7eb;border-radius:12px;overflow:hidden;overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:900px;">
+{header}
 <tbody>{rows_html}</tbody>
 </table>
 </div>
