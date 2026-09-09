@@ -1049,9 +1049,11 @@ with tab4:
                   "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12}
     MONTHS4 = list(MONTH_NUM4.keys())
 
-    fc1, fc2 = st.columns(2)
+    fc1, fc2, fc3, fc4 = st.columns(4)
     with fc1: t4_fm = st.selectbox("From month", MONTHS4, index=0, key="t4_fm")
-    with fc2: t4_tm = st.selectbox("To month", MONTHS4, index=MONTHS4.index(today.strftime("%b")), key="t4_tm")
+    with fc2: t4_fy = st.selectbox("From year", ["2026"], index=0, key="t4_fy")
+    with fc3: t4_tm = st.selectbox("To month", MONTHS4, index=MONTHS4.index(today.strftime("%b")), key="t4_tm")
+    with fc4: t4_ty = st.selectbox("To year", ["2026"], index=0, key="t4_ty")
 
     g_offices = get_regional_data(2026, MONTH_NUM4[t4_fm], 2026, MONTH_NUM4[t4_tm])
     b_offices = get_bing_regional_data(2026, MONTH_NUM4[t4_fm], 2026, MONTH_NUM4[t4_tm])
