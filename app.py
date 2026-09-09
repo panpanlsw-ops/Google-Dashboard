@@ -1048,7 +1048,7 @@ with tab4:
     MONTH_NUM4 = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
                   "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12}
     MONTHS4 = list(MONTH_NUM4.keys())
-    YEARS4  = ['2024', '2025', '2026']
+    YEARS4  = ['2025', '2026']
 
     fc1, fc2, fc3, fc4 = st.columns(4)
     with fc1: t4_fm = st.selectbox("From month", MONTHS4, index=0, key="t4_fm")
