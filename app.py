@@ -1066,6 +1066,9 @@ with tab4:
     g_map = {o["name"]: o for o in g_offices}
     b_map = {o["name"]: o for o in b_offices}
     all_regions = sorted(set(list(g_map.keys()) + list(b_map.keys())))
+    # Filter out junk region names
+    JUNK_REGIONS = ["0", "nan", "", "appointment setters", "appointment set"]
+    all_regions = [r for r in all_regions if r and r not in ["0","nan",""] and not any(j in r.lower() for j in ["appointment set"])]
 
     def sv4(v):
         try: return int(float(v)) if float(v)==float(v) else 0
