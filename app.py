@@ -1081,8 +1081,8 @@ with tab4:
         [r for r in set(list(g_map.keys())+list(b_map.keys()))
          if r and r not in JUNK and "appointment set" not in r.lower()],
         key=lambda r: (
-            -(sv4(g_map.get(r,{}).get("ul",0))+sv4(b_map.get(r,{}).get("ul",0))),
-            -(float(g_map.get(r,{}).get("sales",0) or 0)+float(b_map.get(r,{}).get("sales",0) or 0))
+            -(float(g_map.get(r,{}).get("sales",0) or 0)+float(b_map.get(r,{}).get("sales",0) or 0)),
+            -(sv4(g_map.get(r,{}).get("ul",0))+sv4(b_map.get(r,{}).get("ul",0)))
         )
     )
     # Filter zero-lead regions
