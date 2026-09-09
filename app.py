@@ -1102,42 +1102,46 @@ with tab4:
         t = g + b
         gw = round(g/t*100) if t else 50
         return (f'<div style="height:4px;background:#e5e7eb;border-radius:2px;margin-top:5px;display:flex;overflow:hidden;">' +
-                f'<div style="width:{gw}%;background:#378ADD;height:100%;"></div>' +
-                f'<div style="width:{100-gw}%;background:#7F77DD;height:100%;"></div></div>')
+                f'<div style="width:{gw}%;background:#1A6BC4;height:100%;"></div>' +
+                f'<div style="width:{100-gw}%;background:#6B21A8;height:100%;"></div></div>')
 
-    mc = "background:#f9fafb;border:0.5px solid #e5e7eb;border-radius:8px;padding:10px 12px;"
+    card_s = "background:#f9fafb;border:0.5px solid #e5e7eb;border-radius:12px;padding:14px 16px;"
+    lbl_s  = "font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;"
+    val_s  = "font-size:22px;font-weight:500;margin-bottom:6px;"
+    gb_s   = "display:flex;gap:8px;margin-bottom:6px;"
+    gtag_s = "font-size:12px;font-weight:700;padding:2px 8px;border-radius:3px;background:#1A6BC4;color:#fff;"
+    btag_s = "font-size:12px;font-weight:700;padding:2px 8px;border-radius:3px;background:#6B21A8;color:#fff;"
+
+    def card4(lbl, total, gv, bv, bar_fn):
+        return (
+            f'<div style="{card_s}">' +
+            f'<div style="{lbl_s}">{lbl}</div>' +
+            f'<div style="{val_s}">{total}</div>' +
+            f'<div style="{gb_s}"><span style="{gtag_s}">G {gv}</span><span style="{btag_s}">B {bv}</span></div>' +
+            bar_fn + '</div>'
+        )
+
     summary_html = (
-        f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px;">' +
-        f'<div style="{mc}"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Total leads</div>' +
-        f'<div style="font-size:18px;font-weight:500;">{g_ul+b_ul:,}</div>' +
-        f'<div style="font-size:10px;margin-top:3px;display:flex;gap:6px;"><span style="color:#378ADD;">G {g_ul:,}</span><span style="color:#7F77DD;">B {b_ul:,}</span></div>' +
-        pct_bar4(g_ul,b_ul)+'</div>' +
-        f'<div style="{mc}"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Appointments</div>' +
-        f'<div style="font-size:18px;font-weight:500;">{g_apt+b_apt:,}</div>' +
-        f'<div style="font-size:10px;margin-top:3px;display:flex;gap:6px;"><span style="color:#378ADD;">G {g_apt:,}</span><span style="color:#7F77DD;">B {b_apt:,}</span></div>' +
-        pct_bar4(g_apt,b_apt)+'</div>' +
-        f'<div style="{mc}"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Customers</div>' +
-        f'<div style="font-size:18px;font-weight:500;">{g_cust+b_cust:,}</div>' +
-        f'<div style="font-size:10px;margin-top:3px;display:flex;gap:6px;"><span style="color:#378ADD;">G {g_cust:,}</span><span style="color:#7F77DD;">B {b_cust:,}</span></div>' +
-        pct_bar4(g_cust,b_cust)+'</div>' +
-        f'<div style="{mc}"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Sales</div>' +
-        f'<div style="font-size:18px;font-weight:500;">{fmts4(g_sales+b_sales)}</div>' +
-        f'<div style="font-size:10px;margin-top:3px;display:flex;gap:6px;"><span style="color:#378ADD;">G {fmts4(g_sales)}</span><span style="color:#7F77DD;">B {fmts4(b_sales)}</span></div>' +
-        pct_bar4(int(g_sales),int(b_sales))+'</div></div>'
+        f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;">' +
+        card4("Total leads", f"{g_ul+b_ul:,}", f"{g_ul:,}", f"{b_ul:,}", pct_bar4(g_ul,b_ul)) +
+        card4("Appointments", f"{g_apt+b_apt:,}", f"{g_apt:,}", f"{b_apt:,}", pct_bar4(g_apt,b_apt)) +
+        card4("Customers", f"{g_cust+b_cust:,}", f"{g_cust:,}", f"{b_cust:,}", pct_bar4(g_cust,b_cust)) +
+        card4("Sales", fmts4(g_sales+b_sales), fmts4(g_sales), fmts4(b_sales), pct_bar4(int(g_sales),int(b_sales))) +
+        '</div>'
     )
 
     grand_ul    = sum(sv4(g_map.get(r,{}).get("ul",0))+sv4(b_map.get(r,{}).get("ul",0)) for r in all_regions)
     grand_sales = sum(float(g_map.get(r,{}).get("sales",0) or 0)+float(b_map.get(r,{}).get("sales",0) or 0) for r in all_regions)
 
-    g_badge = '<span style="font-size:9px;font-weight:600;padding:1px 5px;border-radius:2px;margin-left:5px;background:#E6F1FB;color:#0C447C;">Google</span>'
-    b_badge = '<span style="font-size:9px;font-weight:600;padding:1px 5px;border-radius:2px;margin-left:5px;background:#EEEDFE;color:#3C3489;">Bing</span>'
+    g_badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:3px;margin-left:6px;background:#1A6BC4;color:#ffffff;">Google</span>'
+    b_badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:3px;margin-left:6px;background:#6B21A8;color:#ffffff;">Bing</span>'
 
     # Column widths — shared between region rows and campaign rows
     COL_W = "30%;7%;7%;7%;9%;7%;7%;7%;7%;6%"
     cols  = COL_W.split(";")
 
     def th_s(c, txt, align="right"):
-        return f'<th style="padding:7px 10px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:{align};font-weight:400;width:{c};">{txt}</th>'
+        return f'<th style="padding:8px 10px;font-size:11px;color:#9ca3af;text-transform:uppercase;text-align:{align};font-weight:400;width:{c};">{txt}</th>'
 
     header = (
         f'<colgroup>{"".join(f"<col style=\"width:{c};\">" for c in cols)}</colgroup>' +
@@ -1153,9 +1157,9 @@ with tab4:
 
     def camp_header_row():
         bg = "#1f2937"
-        s = f'<tr style="background:{bg};">' + f'<td style="padding:6px 10px 6px 20px;font-size:10px;color:#9ca3af;text-transform:uppercase;width:{cols[0]};">Campaign</td>'
+        s = f'<tr style="background:{bg};">' + f'<td style="padding:7px 10px 7px 20px;font-size:11px;color:#9ca3af;text-transform:uppercase;width:{cols[0]};">Campaign</td>'
         for i, lbl in enumerate(["Leads","Apt","Cust","Sales","","","","",""]):
-            s += f'<td style="padding:6px 10px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:right;width:{cols[i+1]};">{lbl}</td>'
+            s += f'<td style="padding:7px 10px;font-size:11px;color:#9ca3af;text-transform:uppercase;text-align:right;width:{cols[i+1]};">{lbl}</td>'
         return s + "</tr>"
 
     def camp_row(name, badge, ul, apt, cust, sales, is_g):
@@ -1164,7 +1168,7 @@ with tab4:
         cv   = "#185FA5" if is_g else "#534AB7"
         s = f'<tr style="background:{bg_l};">' + f'<td style="padding:6px 10px 6px 20px;font-size:11px;font-weight:500;color:#374151;width:{cols[0]};">{name}{badge}</td>'
         for i, (v, fmt) in enumerate([(ul,f"{ul:,}"),(apt,f"{apt:,}"),(cust,f"{cust:,}"),(sales,fmts4(sales))]):
-            s += f'<td style="padding:6px 10px;font-size:11px;text-align:right;color:{cv};background:{bg_v};width:{cols[i+1]};">{fmt}</td>'
+            s += f'<td style="padding:7px 10px;font-size:13px;text-align:right;color:{cv};background:{bg_v};width:{cols[i+1]};">{fmt}</td>'
         for i in range(5):
             s += f'<td style="background:{bg_v};width:{cols[i+5]};"></td>'
         return s + "</tr>"
@@ -1191,8 +1195,8 @@ with tab4:
                   f'style="cursor:pointer;margin-left:5px;font-size:11px;color:#6b7280;display:inline-block;">&#9658;</span>') if has_det else ""
         onclick = f'onclick="t4tog(\'{key}\')" style="cursor:pointer;"' if has_det else ""
 
-        td = "padding:7px 10px;border-bottom:0.5px solid #f3f4f6;text-align:right;font-size:12px;color:#374151;"
-        tdl = "padding:7px 10px;border-bottom:0.5px solid #f3f4f6;text-align:left;font-size:12px;font-weight:500;color:#111827;"
+        td = "padding:8px 10px;border-bottom:0.5px solid #f3f4f6;text-align:right;font-size:13px;color:#374151;"
+        tdl = "padding:8px 10px;border-bottom:0.5px solid #f3f4f6;text-align:left;font-size:13px;font-weight:500;color:#111827;"
         rows_html += (
             f'<tr {onclick}>' +
             f'<td style="{tdl}">{reg}{expand}</td>' +
