@@ -1116,9 +1116,14 @@ with tab4:
     def split_bar(g, b):
         t = g + b
         gw = round(g/t*100) if t else 50
-        return (f'<div style="width:100%;height:8px;border-radius:4px;overflow:hidden;display:flex;">' +
+        bw = 100 - gw
+        winner_col = "#1A6BC4" if gw >= bw else "#6B21A8"
+        return (f'<div style="display:flex;align-items:center;gap:6px;">' +
+                f'<div style="flex:1;height:5px;border-radius:3px;overflow:hidden;display:flex;min-width:60px;">' +
                 f'<div style="width:{gw}%;background:#1A6BC4;height:100%;"></div>' +
-                f'<div style="width:{100-gw}%;background:#6B21A8;height:100%;"></div></div>')
+                f'<div style="width:{bw}%;background:#6B21A8;height:100%;"></div></div>' +
+                f'<span style="font-size:11px;font-weight:600;color:{winner_col};white-space:nowrap;">{gw}%</span>' +
+                f'</div>')
 
     # Build rows
     rows_html = ""
