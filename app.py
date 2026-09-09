@@ -1216,7 +1216,7 @@ with tab4:
                 [{"src":"g","data":c} for c in g_camps] +
                 [{"src":"b","data":c} for c in b_camps]
             )
-            all_camps_tagged.sort(key=lambda x: (-sv4(x["data"].get("ul",0)), -float(x["data"].get("sales",0) or 0)))
+            all_camps_tagged.sort(key=lambda x: (-float(x["data"].get("sales",0) or 0), -sv4(x["data"].get("ul",0))))
 
             det_rows = camp_header_row()
             for item in all_camps_tagged:
@@ -1277,4 +1277,4 @@ function t4tog(key){{
 """
 
     st.markdown(summary_html, unsafe_allow_html=True)
-    st.components.v1.html(table_html, height=len(all_regions)*40+300, scrolling=False)
+    st.components.v1.html(table_html, height=len(all_regions)*40+300, scrolling=True)
