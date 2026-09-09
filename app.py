@@ -1129,6 +1129,15 @@ with tab4:
     total_ul = total_apt = total_cust = 0
     total_sales = 0.0
 
+    # Pre-calculate grand totals for % columns
+    grand_ul = sum(sv4(g_map.get(r,{}).get("ul",0)) + sv4(b_map.get(r,{}).get("ul",0)) for r in all_regions)
+    grand_sales = sum(float(g_map.get(r,{}).get("sales",0) or 0) + float(b_map.get(r,{}).get("sales",0) or 0) for r in all_regions)
+
+    def fmt_pct(n, d):
+        return f"{n/d*100:.1f}%" if d else "—"
+    def fmt_ratio(n, d):
+        return f"{n/d*100:.1f}%" if d else "—" 
+
     for reg in all_regions:
         # Skip regions with zero total leads
         g_test = g_map.get(reg, {}); b_test = b_map.get(reg, {})
@@ -1181,12 +1190,17 @@ with tab4:
             f'<td style="{td}">{t_apt:,}</td>' +
             f'<td style="{td}">{t_cust:,}</td>' +
             f'<td style="{td}">{fmts4(t_sales)}</td>' +
+            f'<td style="{td}">{fmt_pct(t_ul, grand_ul)}</td>' +
+            f'<td style="{td}">{fmt_pct(t_sales, grand_sales)}</td>' +
+            f'<td style="{td}">{fmt_ratio(t_apt, t_ul)}</td>' +
+            f'<td style="{td}">{fmt_ratio(t_cust, t_apt)}</td>' +
+            f'<td style="{td}">{fmt_ratio(t_cust, t_ul)}</td>' +
             f'</tr>'
         )
         if has_det:
             rows_html += (
                 f'<tr id="d_{key}" style="display:none;">' +
-                f'<td colspan="5" style="padding:0;">' +
+                f'<td colspan="10" style="padding:0;">' +
                 f'<table style="width:100%;border-collapse:collapse;">' +
                 f'<thead><tr style="background:#1f2937;">' +
                 f'<th style="text-align:left;padding:6px 20px;font-size:10px;color:#9ca3af;text-transform:uppercase;min-width:200px;">Campaign</th>' +
@@ -1205,6 +1219,11 @@ with tab4:
         f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;font-weight:500;">{total_apt:,}</td>' +
         f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;font-weight:500;">{total_cust:,}</td>' +
         f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;font-weight:500;">{fmts4(total_sales)}</td>' +
+        f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;">100%</td>' +
+        f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;">100%</td>' +
+        f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;">{fmt_ratio(total_apt,total_ul)}</td>' +
+        f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;">{fmt_ratio(total_cust,total_apt)}</td>' +
+        f'<td style="text-align:right;padding:8px 10px;font-size:12px;color:#fff;">{fmt_ratio(total_cust,total_ul)}</td>' +
         f'</tr>'
     )
 
@@ -1216,6 +1235,8 @@ with tab4:
   <th style="text-align:left;padding:7px 12px;font-size:10px;color:#fff;text-transform:uppercase;min-width:180px;">Region</th>
   <th style="{th}">Leads</th><th style="{th}">Apt</th>
   <th style="{th}">Cust</th><th style="{th}">Sales</th>
+  <th style="{th}">Leads %</th><th style="{th}">Sales %</th>
+  <th style="{th}">Apt/Leads</th><th style="{th}">Order/Apt</th><th style="{th}">Order/Leads</th>
 </tr></thead>
 <tbody>{rows_html}</tbody>
 </table>
