@@ -1138,6 +1138,14 @@ with tab4:
     def fmt_ratio(n, d):
         return f"{n/d*100:.1f}%" if d else "—" 
 
+    # Sort regions by total leads desc, then sales desc
+    def reg_sort_key(r):
+        g = g_map.get(r, {}); b = b_map.get(r, {})
+        ul = sv4(g.get("ul",0)) + sv4(b.get("ul",0))
+        sales = float(g.get("sales",0) or 0) + float(b.get("sales",0) or 0)
+        return (-ul, -sales)
+    all_regions = sorted(all_regions, key=reg_sort_key)
+
     for reg in all_regions:
         # Skip regions with zero total leads
         g_test = g_map.get(reg, {}); b_test = b_map.get(reg, {})
@@ -1201,13 +1209,18 @@ with tab4:
             rows_html += (
                 f'<tr id="d_{key}" style="display:none;">' +
                 f'<td colspan="10" style="padding:0;">' +
-                f'<table style="width:100%;border-collapse:collapse;">' +
+                f'<table style="width:100%;border-collapse:collapse;table-layout:fixed;">' +
+                f'<colgroup>' +
+                f'<col style="width:37%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:9%">' +
+                f'<col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:5%">' +
+                f'</colgroup>' +
                 f'<thead><tr style="background:#1f2937;">' +
-                f'<th style="text-align:left;padding:6px 20px;font-size:10px;color:#9ca3af;text-transform:uppercase;min-width:200px;">Campaign</th>' +
+                f'<th style="text-align:left;padding:6px 20px;font-size:10px;color:#9ca3af;text-transform:uppercase;">Campaign</th>' +
                 f'<th style="padding:6px 10px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:right;">Leads</th>' +
                 f'<th style="padding:6px 10px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:right;">Apt</th>' +
                 f'<th style="padding:6px 10px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:right;">Cust</th>' +
                 f'<th style="padding:6px 10px;font-size:10px;color:#9ca3af;text-transform:uppercase;text-align:right;">Sales</th>' +
+                f'<th colspan="5"></th>' +
                 f'</tr></thead><tbody>{det_rows}</tbody></table>' +
                 f'</td></tr>'
             )
