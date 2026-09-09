@@ -1048,7 +1048,7 @@ with tab4:
     MONTH_NUM4 = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
                   "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12}
     MONTHS4 = list(MONTH_NUM4.keys())
-    YEARS4  = [str(y) for y in range(2024, today.year+1)]
+    YEARS4  = ['2024', '2025', '2026']
 
     fc1, fc2, fc3, fc4 = st.columns(4)
     with fc1: t4_fm = st.selectbox("From month", MONTHS4, index=0, key="t4_fm")
@@ -1127,6 +1127,10 @@ with tab4:
     total_sales = 0.0
 
     for reg in all_regions:
+        # Skip regions with zero total leads
+        g_test = g_map.get(reg, {}); b_test = b_map.get(reg, {})
+        if sv4(g_test.get("ul",0)) + sv4(b_test.get("ul",0)) == 0:
+            continue
         g = g_map.get(reg, {})
         b = b_map.get(reg, {})
         g_ul_r   = sv4(g.get("ul",0));   b_ul_r   = sv4(b.get("ul",0))
