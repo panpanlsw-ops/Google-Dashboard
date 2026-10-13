@@ -14,7 +14,8 @@ CAMPAIGNS_BASE = {
 }
 
 
-SHEET_ID = "1SNYa9gzDTmXqwIMz4j8kBxCsqnRlIZop_iByLqCpPTU"
+SHEET_ID      = "1XXbTwhhbeh-VFV1Kik_YnvjcbmFd8M7V8Pdb57n14VU"
+BING_SHEET_ID = "1SNYa9gzDTmXqwIMz4j8kBxCsqnRlIZop_iByLqCpPTU"
 
 @st.cache_resource
 def _gspread_client():
@@ -378,6 +379,138 @@ def get_regional_data(from_year=None, from_month=None, to_year=None, to_month=No
 
 
 # ── Tab 3: Campaign Performance ───────────────────────────────────────────────
+@st.cache_data(ttl=300)
+def _read_bing_sheet(tab_name: str, header_row: int = 0) -> pd.DataFrame:
+    """Fetch worksheet from Bing dashboard Google Sheet."""
+    gc = _gspread_client()
+    ws = gc.open_by_key(BING_SHEET_ID).worksheet(tab_name)
+    rows = ws.get_all_values()
+    if not rows or len(rows) <= header_row:
+        return pd.DataFrame()
+    headers = [str(h).strip() if str(h).strip() else f"col_{i}"
+               for i, h in enumerate(rows[header_row])]
+    data = rows[header_row + 1:]
+    n = len(headers)
+    data = [r + [""] * (n - len(r)) for r in data]
+    df = pd.DataFrame(data, columns=headers)
+    df = df.replace("", pd.NA)
+    return df
+
+
+@st.cache_data(ttl=300)
+def get_bing_regional_data(from_year=None, from_month=None, to_year=None, to_month=None) -> list:
+    """Reads Tab2_Regional_Detail from Bing sheet (regional summary)."""
+    df = _read_bing_sheet("Tab2_Regional_Detail", header_row=0).copy()
+    df.columns = [str(c).strip() for c in df.columns]
+    header_map = {
+        "Regional Office":"name","Year":"year","Month":"month",
+        "Unique Leads":"ul","New Leads":"nl","Appointments":"apt","Apt":"apt",
+        "Quote":"quote","Customers":"cust","Sales Amount":"sales",
+        "NL Customers":"nlc","NL Sales":"nl_sales",
+    }
+    df = df.rename(columns={c: header_map[c] for c in df.columns if c in header_map})
+    for col in ["name","year","month","ul","nl","apt","quote","cust","sales","nlc","nl_sales"]:
+        if col not in df.columns:
+            df[col] = pd.NA
+    df = df.dropna(subset=["name"])
+    df["name"] = df["name"].astype(str).str.strip()
+    JUNK_CONTAINS = ["row","update","office","regional","add new","appointment set"]
+    JUNK_EXACT = ["0","nan",""]
+    df = df[df["name"].apply(lambda x: bool(x) and x not in JUNK_EXACT and
+            not any(j in x.lower() for j in JUNK_CONTAINS))]
+
+    MONTH_MAP = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
+                 "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12,
+                 "January":1,"February":2,"March":3,"April":4,
+                 "June":6,"July":7,"August":8,"September":9,
+                 "October":10,"November":11,"December":12}
+
+    if from_year and to_year:
+        def in_range(row):
+            try:
+                yr = int(float(row["year"]))
+                mo = MONTH_MAP.get(str(row["month"]).strip(), 0)
+                return (from_year*100+from_month) <= (yr*100+mo) <= (to_year*100+to_month)
+            except: return False
+        df = df[df.apply(in_range, axis=1)]
+
+    offices = {}
+    for _, row in df.iterrows():
+        name = str(row["name"]).strip()
+        if not name or name == "nan": continue
+        if name not in offices:
+            offices[name] = {f:0.0 for f in ["ul","nl","apt","quote","cust","sales","nlc","nl_sales"]}
+        for f in ["ul","nl","apt","quote","cust","sales","nlc","nl_sales"]:
+            offices[name][f] += _sv(row.get(f,0))
+
+    return [dict(name=name, ul=int(d["ul"]), nl=int(d["nl"]), apt=int(d["apt"]),
+                 quote=int(d["quote"]), cust=int(d["cust"]), sales=d["sales"],
+                 nlc=int(d["nlc"]), nl_sales=d["nl_sales"])
+            for name, d in offices.items()]
+
+
+@st.cache_data(ttl=300)
+def get_bing_regional_detail(from_year=None, from_month=None, to_year=None, to_month=None) -> dict:
+    """Reads Tab2_Regional from Bing sheet (campaign detail)."""
+    try:
+        df = _read_bing_sheet("Tab2_Regional", header_row=0)
+        df.columns = [str(c).strip() for c in df.columns]
+        pos_cols = ["region","year","month","campaign","ul","nl","apt","quote","cust","sales","nlc","nl_sales"]
+        df = df.iloc[:, :len(pos_cols)]
+        df.columns = pos_cols[:len(df.columns)]
+        for col in pos_cols:
+            if col not in df.columns:
+                df[col] = pd.NA
+        df["region"]   = df["region"].astype(str).str.replace("–","-").str.strip()
+        df["campaign"] = df["campaign"].astype(str).str.replace("–","-").str.strip()
+        JUNK_CONTAINS = ["row","update","office","regional","add new","appointment set"]
+        JUNK_EXACT = ["0","nan",""]
+        df = df[df["region"].apply(lambda x: bool(x) and x not in JUNK_EXACT and
+                not any(j in x.lower() for j in JUNK_CONTAINS))]
+        df = df[df["campaign"].apply(lambda x: bool(x) and x not in JUNK_EXACT)]
+        df = df[df["region"] != "Regional Office"]
+        df = df[df["campaign"] != "Campaign"]
+        df = df.dropna(subset=["region","campaign"])
+
+        MONTH_MAP = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
+                     "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12,
+                     "January":1,"February":2,"March":3,"April":4,
+                     "June":6,"July":7,"August":8,"September":9,
+                     "October":10,"November":11,"December":12}
+
+        if from_year and to_year:
+            def in_range(row):
+                try:
+                    yr = int(float(row["year"]))
+                    mo = MONTH_MAP.get(str(row["month"]).strip(), 0)
+                    return (from_year*100+from_month) <= (yr*100+mo) <= (to_year*100+to_month)
+                except: return False
+            df = df[df.apply(in_range, axis=1)]
+
+        result = {}
+        agg = {}
+        for _, row in df.iterrows():
+            reg = row["region"]; camp = row["campaign"]
+            key = (reg, camp)
+            if key not in agg:
+                agg[key] = {f:0.0 for f in ["ul","nl","apt","quote","cust","sales"]}
+            for f in ["ul","nl","apt","quote","cust","sales"]:
+                agg[key][f] += _sv(row.get(f, 0))
+
+        for (reg, camp), d in agg.items():
+            if reg not in result:
+                result[reg] = []
+            result[reg].append(dict(campaign=camp, ul=int(d["ul"]), nl=int(d["nl"]),
+                                    apt=int(d["apt"]), quote=int(d["quote"]),
+                                    cust=int(d["cust"]), sales=d["sales"]))
+        return result
+    except Exception as e:
+        import traceback
+        print(f"Error reading Bing detail: {e}")
+        traceback.print_exc()
+        return {}
+
+
 def get_campaign_data() -> list:
     df = _read_sheet("Tab3_Campaign", header_row=0).copy()
     pos_cols3 = ["campaign","year","month","clicks","cost","conv",
