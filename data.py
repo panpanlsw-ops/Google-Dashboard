@@ -94,6 +94,58 @@ def _norm(name):
     return name
 
 
+# ── Campaign renames that start in a given month ──────────────────────────────
+# (old name, new name, (year, month) the new name starts).
+# From that month on (that month included), anything recorded under the old name
+# is counted under the new name. Earlier months keep the old name.
+CAMPAIGN_RENAMES = [
+    ("PMAX 1 - LA", "PMAX 1 - LA + Ventura (through Santa Barbara)", (2026, 10)),
+]
+
+_MONTH_NUM = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
+              "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12,
+              "January":1,"February":2,"March":3,"April":4,
+              "June":6,"July":7,"August":8,"September":9,
+              "October":10,"November":11,"December":12}
+
+def _apply_campaign_renames(df, sum_cols=None, finish=None):
+    """
+    Move rows from the old campaign name to the new one for months on/after the
+    start month in CAMPAIGN_RENAMES. df needs 'campaign', 'year' and 'month' columns.
+
+    If sum_cols is given, rows of the new name that now share the same month
+    (the old-name row and the new-name row) are added together, so one does not
+    overwrite the other. 'finish' can recalculate ratio columns (like ROI) on
+    those combined rows. Every other campaign is left exactly as it was.
+    """
+    for old, new, (ry, rm) in CAMPAIGN_RENAMES:
+        old, new = _norm(old), _norm(new)
+        yr = pd.to_numeric(df["year"], errors="coerce")
+        mo = df["month"].astype(str).str.strip().map(_MONTH_NUM)
+        moved = (df["campaign"] == old) & ((yr * 100 + mo) >= ry * 100 + rm)
+        if not moved.any():
+            continue
+        df = df.copy()
+        df.loc[moved, "campaign"] = new
+        if sum_cols:
+            hit = df["campaign"] == new
+            part = df[hit].copy()
+            part["_y"] = pd.to_numeric(part["year"], errors="coerce")
+            part["_m"] = part["month"].astype(str).str.strip().map(_MONTH_NUM)
+            for c in sum_cols:
+                part[c] = part[c].apply(_sv)
+            agg = {c: "sum" for c in sum_cols}
+            agg.update({"year": "first", "month": "first"})
+            merged = (part.groupby(["campaign", "_y", "_m"], as_index=False,
+                                   sort=False, dropna=False)
+                          .agg(agg)
+                          .drop(columns=["_y", "_m"]))
+            if finish:
+                merged = finish(merged)
+            df = pd.concat([df[~hit], merged], ignore_index=True)
+    return df
+
+
 # ── Tab 1: KPI Cards ──────────────────────────────────────────────────────────
 @st.cache_data(ttl=300)
 def get_data(campaign: str) -> dict:
@@ -253,6 +305,7 @@ def get_regional_detail(from_year=None, from_month=None, to_year=None, to_month=
         df = df.dropna(subset=["region","campaign"])
         df["region"]   = df["region"].astype(str).str.replace("–","-").str.strip()
         df["campaign"] = df["campaign"].astype(str).str.replace("–","-").str.strip()
+        df = _apply_campaign_renames(df)
 
         MONTH_MAP = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
                      "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12,
@@ -524,11 +577,16 @@ def get_campaign_data() -> list:
     # ── Oct 2026 corrections ──────────────────────────────────────
     is_oct_2026 = (df["month"].astype(str).str.strip().isin(["Oct","October"])) & \
                   (df["year"].astype(str).str.strip() == "2026")
-    # Rename PMAX 1 - LA → PMAX 1 - LA + Ventura (through Santa Barbara) for Oct 2026
-    df.loc[is_oct_2026 & (df["campaign"] == "PMAX 1 - LA"),
-           "campaign"] = "PMAX 1 - LA + Ventura (through Santa Barbara)"
     # Remove IE - Palm Springs Single Form for Oct 2026
     df = df[~(is_oct_2026 & (df["campaign"] == "IE - Palm Springs Single Form"))]
+
+    # From Oct 2026 on, PMAX 1 - LA is counted under its new name (see CAMPAIGN_RENAMES)
+    def _finish(m):
+        # ROI = (sales - cost) / cost, same formula the dashboard uses
+        m["roi"] = ((m["sales"] - m["cost"]) / m["cost"].where(m["cost"] > 0) * 100).fillna(0)
+        return m
+    df = _apply_campaign_renames(
+        df, sum_cols=["clicks","cost","conv","leads","apt","cust","sales"], finish=_finish)
 
     MONTH_MAP = {"Jan":0,"Feb":1,"Mar":2,"Apr":3,"May":4,"Jun":5,
                  "Jul":6,"Aug":7,"Sep":8,"Oct":9,"Nov":10,"Dec":11,
